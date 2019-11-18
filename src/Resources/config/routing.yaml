@@ -1,32 +1,32 @@
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CREATE:
-  path: /crud/{unitName}
+  path: /{unitName}
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [POST]
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_UPDATE:
-  path: /crud/{unitName}/{id}
+  path: /{unitName}/{id}
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [POST]
   requirements: {id: '\d+'}
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_DELETE:
-  path: /crud/{unitName}/{id}
+  path: /{unitName}/{id}
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [DELETE]
   requirements: {id: '\d+'}
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_READ:
-  path: /crud/{unitName}/{id}
+  path: /{unitName}/{id}
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [GET]
   requirements: {id: '\d+'}
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_READ_LIST:
-  path: /crud/{unitName}
+  path: /{unitName}
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [GET]
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_FORM_CREATE:
-  path: /crud/{unitName}/form
+  path: /{unitName}/form
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [GET]
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_FORM_UPDATE:
-  path: /crud/{unitName}/{id}/form
+  path: /{unitName}/{id}/form
   controller: Ewll\CrudBundle\Controller\CrudController::action
   methods: [GET]
   requirements: {id: '\d+'}

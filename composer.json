@@ -20,7 +20,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Ewll\\UserBundle\\": "src/"
+      "Ewll\\CrudBundle\\": "src/"
     }
   }
 }
