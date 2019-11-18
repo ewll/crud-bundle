@@ -1,0 +1,26 @@
+{
+  "name": "ewll/crud-bundle",
+  "description": "Crud Bundle",
+  "type": "symfony-bundle",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Maksim Salamakhin",
+      "email": "343604@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.3",
+    "ext-json": "*",
+    "symfony/form": "^4.3",
+    "symfony/validator": "^4.3",
+    "symfony/framework-bundle": "^4.3",
+    "symfony/translation": "^4.3",
+    "ewll/db-bundle": "^2.13"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ewll\\UserBundle\\": "src/"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+services:
+    Ewll\CrudBundle\Controller\CrudController:
+        tags: ['controller.service_arguments']
+        arguments:
+            - '@Ewll\CrudBundle\Crud'
+            - '@ewll.db.repository-provider'
+
+    Ewll\CrudBundle\Unit\Item\:
+        resource: '../src/Crud/Unit/Item'
+        tags: ['crud_unit']
+        arguments: ['@ewll.db.repository-provider', '@Ewll\UserBundle\Authenticator\Authenticator']
+
+    Ewll\CrudBundle\Constraint\EntityAccessByUnitValidator:
+        tags: ['validator.constraint_validator']
+        arguments: ['@ewll.db.repository-provider', !tagged crud_unit]
+
+    Ewll\CrudBundle\Crud:
+        arguments:
+            - '@validator'
+            - '@ewll.db.repository-provider'
+            - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
+            - '@Ewll\UserBundle\AccessRule\AccessChecker'
+            - '@Ewll\UserBundle\Authenticator\Authenticator'
+            - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
+            - '@Ewll\CrudBundle\Preformation\Preformator'
+            - '@form.factory'
+            - !tagged crud_unit
+
+    Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler:
+        arguments:
+            - !tagged crud_view_transformer
+
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\DateTransformer:
+        tags: ['crud_view_transformer']
+
+    Ewll\CrudBundle\Preformation\PreformationAbstract:
+        abstract: true
+
+    Ewll\CrudBundle\Preformation\Item\:
+        resource: '../src/Crud/Preformation/Item'
+        parent: Ewll\CrudBundle\Preformation\PreformationAbstract
+        tags: ['crud_preformation']
+        autowire: false
+        autoconfigure: false
+
+    Ewll\CrudBundle\Preformation\Preformator:
+        arguments: ['@form.factory', !tagged crud_preformation]
+
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
+        tags: ['crud_view_transformer']
+        arguments: ['@ewll.db.repository-provider']
+
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\OneToManyTransformer:
+        tags: ['crud_view_transformer']
+        arguments: ['@ewll.db.repository-provider']
