@@ -2,8 +2,6 @@
 
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
-use LogicException;
-use Symfony\Component\Form\FormBuilderInterface;
 
 abstract class UnitAbstract implements UnitInterface
 {
@@ -31,6 +29,11 @@ abstract class UnitAbstract implements UnitInterface
         return ['id'];
     }
 
+    public function getPreSort(): array
+    {
+        return [];
+    }
+
     public function getDeleteConstraints(): array
     {
         return [];
@@ -41,24 +44,28 @@ abstract class UnitAbstract implements UnitInterface
         return null;
     }
 
-    public function getPreformationClassName(): ?string
+//    public function getPreformationClassName(): ?string
+//    {
+//        return null;
+//    }
+
+//    public function fillUpdateFormBuilder(FormBuilderInterface $formBuilder): void
+//    {
+//        $unit = $this;
+//        if (!$unit instanceof CreateMethodInterface) {
+//            throw new LogicException('Unit' . static::class . ' must implement ' . CreateMethodInterface::class);
+//        }
+//
+//        $unit->fillCreateFormBuilder($formBuilder);
+//    }
+
+    public function getMutationsOnUpdate(): array
     {
-        return null;
+        return [];
     }
 
-    public function hasPreformation(): bool
+    public function getMutationsOnCreate(): array
     {
-        return $this->getPreformationClassName() !== null;
+        return [];
     }
-
-    public function fillUpdateFormBuilder(FormBuilderInterface $formBuilder): void
-    {
-        $unit = $this;
-        if (!$unit instanceof CreateMethodInterface) {
-            throw new LogicException('Unit' . static::class . ' must implement ' . CreateMethodInterface::class);
-        }
-
-        $unit->fillCreateFormBuilder($formBuilder);
-    }
-
 }

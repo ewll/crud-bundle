@@ -29,7 +29,7 @@ class Preformator
         /** @var CreateMethodInterface|UpdateMethodInterface $unit */
         $preformationClassName = $unit->getPreformationClassName();
         $preformation = $this->getPreformation($preformationClassName);
-        $formBuilder = $this->formFactory->createBuilder(FormType::class, null, ['csrf_protection' => false]);
+        $formBuilder = $this->formFactory->createBuilder();
         $preformation->fillPreformBuilder($formBuilder, $data);
         $form = $formBuilder->getForm();
         $form->submit($data);

@@ -3,6 +3,7 @@
 use Ewll\CrudBundle\Crud;
 use Ewll\CrudBundle\Exception\AccessConditionException;
 use Ewll\CrudBundle\Exception\AccessNotGrantedException;
+use Ewll\CrudBundle\Exception\CsrfException;
 use Ewll\CrudBundle\Exception\EntityNotFoundException;
 use Ewll\CrudBundle\Exception\FilterNotAllowedException;
 use Ewll\CrudBundle\Exception\PropertyNotAllowedException;
@@ -53,6 +54,7 @@ class CrudController extends AbstractController
                     break;
                 case self::ROUTE_NAME_DELETE:
                     $method = Crud::METHOD_DELETE;
+                    $data = $request->request->all();
                     break;
                 case self::ROUTE_NAME_READ:
                     $method = Crud::METHOD_READ;
@@ -85,7 +87,7 @@ class CrudController extends AbstractController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_ACCEPTABLE);
         } catch (EntityNotFoundException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (UserNotAuthorizedException $e) {
+        } catch (UserNotAuthorizedException|CsrfException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNAUTHORIZED);
         } catch (AccessNotGrantedException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_METHOD_NOT_ALLOWED);

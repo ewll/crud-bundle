@@ -8,4 +8,5 @@ interface ReadMethodInterface extends UnitInterface
     public function getAllowedFilterFields(): array;
     public function prepareFilters(array $filters): array;
     public function getAllowedSortFields(): array;
+    public function getPreSort(): array;
 }

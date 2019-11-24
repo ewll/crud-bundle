@@ -16,7 +16,8 @@
     "symfony/validator": "^4.3",
     "symfony/framework-bundle": "^4.3",
     "symfony/translation": "^4.3",
-    "ewll/db-bundle": "^2.13"
+    "ewll/db-bundle": "^2.13",
+    "ewll/user-bundle": "^1.1"
   },
   "autoload": {
     "psr-4": {

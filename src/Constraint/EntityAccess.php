@@ -5,16 +5,18 @@ use Symfony\Component\Validator\Constraint;
 /**
  * @Annotation
  */
-class EntityAccessByUnit extends Constraint
+class EntityAccess extends Constraint
 {
-    public $message = 'Access denied';
-    public $entityClassName;
-    public $unitClassName;
+    const MESSAGE_KEY_NOT_EXISTS = 1;
 
-    public function __construct(string $entityClassName, string $unitClassName)
+    public $messages = [
+        self::MESSAGE_KEY_NOT_EXISTS => 'entity.not-exists'
+    ];
+    public $entityClassName;
+
+    public function __construct(string $entityClassName)
     {
         $this->entityClassName = $entityClassName;
-        $this->unitClassName = $unitClassName;
 
         parent::__construct();
     }

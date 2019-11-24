@@ -2,6 +2,7 @@
 
 use Ewll\CrudBundle\Exception\AccessConditionException;
 use Ewll\CrudBundle\Exception\AccessNotGrantedException;
+use Ewll\CrudBundle\Exception\CsrfException;
 use Ewll\CrudBundle\Exception\EntityNotFoundException;
 use Ewll\CrudBundle\Exception\FilterNotAllowedException;
 use Ewll\CrudBundle\Exception\PropertyNotAllowedException;
@@ -39,6 +40,9 @@ class Crud
     const METHOD_DELETE = 'delete';
     const METHOD_FORM_CREATE = 'formCreate';
     const METHOD_FORM_UPDATE = 'formUpdate';
+
+    const CSRF_METHODS = [self::METHOD_CREATE, self::METHOD_UPDATE, self::METHOD_DELETE];
+    const FORM_METHODS = [self::METHOD_CREATE, self::METHOD_UPDATE, self::METHOD_DELETE];
 
     const CONSTRAINT_NAME_ENTITY = 'globalEntity';
 
@@ -85,6 +89,7 @@ class Crud
      * @throws PropertyNotAllowedException
      * @throws ValidationException
      * @throws AccessNotGrantedException
+     * @throws CsrfException
      * @throws UserNotAuthorizedException
      * @throws AccessConditionException
      */
@@ -92,6 +97,7 @@ class Crud
     {
         $unit = $this->getUnit($unitName);
         $accessRuleClassName = $unit->getAccessRuleClassName();
+        $user = null;
         if (null !== $accessRuleClassName) {
             $accessRule = $this->accessRuleProvider->findByClassName($accessRuleClassName);
             try {
@@ -103,12 +109,21 @@ class Crud
                 throw new AccessNotGrantedException();
             }
         }
+        if (null !== $user && in_array($method, self::CSRF_METHODS, true)) {
+            $token = $data['_token'] ?? null;
+            if ($token !== $user->token->data['csrf']) {
+                throw new CsrfException();
+            }
+        }
         if (!$this->isMethodAllowed($unit, $method)) {
             throw new UnitMethodNotAllowedException($method);
         }
         $entityClass = $unit->getEntityClass();
         $repository = $this->repositoryProvider->get($entityClass);
         $function = "{$method}Method";
+        if (in_array($method, self::FORM_METHODS, true)) {
+            $data = $data['form'] ?? [];
+        }
         $response = $this->$function($unit, $repository, $data, $id);
 
         return $response;
@@ -118,20 +133,20 @@ class Crud
         CreateMethodInterface $unit,
         Repository $repository
     ): array {
-        $formBuilder = $this->createFormBuilder();
-        $hasPreformation = $unit->hasPreformation();
-        if ($hasPreformation) {
-            $this->preformator->fillPreformBuilder($unit, $formBuilder);
-        } else {
-            $unit->fillCreateFormBuilder($formBuilder);
-        }
-        $fieldNames = $this->getFieldNamesFromFormBuilder($formBuilder);
-        $form = [];
-        foreach ($fieldNames as $fieldName) {
-            $form[$fieldName] = [];
+        $form = $this->createForm($unit->getCreateFormConfig());
+//        $hasPreformation = $unit->hasPreformation();
+//        if ($hasPreformation) {
+//            $this->preformator->fillPreformBuilder($unit, $formBuilder);
+//        } else {
+//        $unit->fillCreateFormBuilder($formBuilder);
+//        }
+        $view = $form->createView();
+        $formDefinition = ['fields' => []];
+        foreach ($view as $fieldName => $field) {
+            $formDefinition['fields'][$fieldName] = [];
         }
 
-        return $form;
+        return $formDefinition;
     }
 
     /** @throws EntityNotFoundException */
@@ -142,33 +157,41 @@ class Crud
         int $id
     ): array {
         $item = $this->getEntityById($unit, $repository, $id);
-        $formBuilder = $this->createFormBuilder();
-        $hasPreformation = $unit->hasPreformation();
-        if ($hasPreformation) {
-            $preformData = (array)$item;
-            $this->preformator->fillPreformBuilder($unit, $formBuilder, $preformData);
-        } else {
-            $unit->fillUpdateFormBuilder($formBuilder);
-        }
-        $fieldNames = $this->getFieldNamesFromFormBuilder($formBuilder);
-        $form = [];
-        foreach ($fieldNames as $fieldName) {
-            $form[$fieldName] = [];
-        }
-
-        if ($hasPreformation) {
-            $parameters = $this->preformator->reverse($unit, $item);
-        } else {
-            $parameters = [];
-            foreach ($form as $fieldName => $field) {
-                $parameters[$fieldName] = $item->$fieldName;
+        $form = $this->createForm($unit->getUpdateFormConfig(), $item);
+//        $hasPreformation = $unit->hasPreformation();
+//        if ($hasPreformation) {
+//            $preformData = (array)$item;
+//            $this->preformator->fillPreformBuilder($unit, $formBuilder, $preformData);
+//        } else {
+//            $unit->fillUpdateFormBuilder($formBuilder);
+//        }
+        $view = $form->createView();
+        $formDefinition = ['fields' => [], 'data' => []];
+        foreach ($view as $fieldName => $field) {
+            $formDefinition['data'][$fieldName] = $field->vars['value'];
+            $formDefinition['fields'][$fieldName] = [];
+            if (isset($field->vars['choices'])) {
+                $choices = [];
+                foreach ($field->vars['choices'] as $choice) {
+                    $choices[] = ['text' => $choice->label, 'value' => $choice->value];
+                }
+                $formDefinition['fields'][$fieldName]['choices'] = $choices;
             }
         }
-        foreach ($form as $fieldName => &$field) {
-            $field['value'] = $parameters[$fieldName];
-        }
 
-        return $form;
+//        if ($hasPreformation) {
+//            $parameters = $this->preformator->reverse($unit, $item);
+//        } else {
+//            $parameters = [];
+//            foreach ($formDefinition['data'] as $fieldName => $field) {
+//                $parameters[$fieldName] = $view[$fieldName]->vars['value'];
+//            }
+//        }
+//        foreach ($formDefinition['data'] as $fieldName => &$field) {
+//            $field = $parameters[$fieldName];
+//        }
+
+        return $formDefinition;
     }
 
     /**
@@ -202,20 +225,22 @@ class Crud
         Repository $repository,
         array $properties
     ): array {
-        if ($unit->hasPreformation()) {
-            $properties = $this->preformator->preformate($unit, $properties);
-        }
-        $formBuilder = $this->createFormBuilder();
-        $unit->fillCreateFormBuilder($formBuilder);
-        $form = $formBuilder->getForm();
+//        if ($unit->hasPreformation()) {
+//            $properties = $this->preformator->preformate($unit, $properties);
+//        }
+        $form = $this->createForm($unit->getCreateFormConfig());
         $form->submit($properties);
         $this->validateForm($form);
         $data = $form->getData();
 
-        $fieldNames = $this->getFieldNamesFromFormBuilder($formBuilder);
         $entityClass = $unit->getEntityClass();
+        $fieldNames = $this->getFieldNamesFromForm($form);
         $entity = new $entityClass();
         $this->fillEntity($entity, $entityClass, $fieldNames, $data);
+        $mutations = $unit->getMutationsOnCreate();
+        foreach ($mutations as $mutationName => $mutationValue) {
+            $entity->$mutationName = $mutationValue;
+        }
 
         $accessConditions = $unit->getAccessConditions();
         foreach ($accessConditions as $field => $value) {
@@ -242,21 +267,25 @@ class Crud
         array $properties,
         int $id
     ): array {
-        if ($unit->hasPreformation()) {
-            $properties = $this->preformator->preformate($unit, $properties);
-        }
-        $formBuilder = $this->createFormBuilder();
-        $unit->fillUpdateFormBuilder($formBuilder);
-        $form = $formBuilder->getForm();
+        $formConfig = $unit->getUpdateFormConfig();
+//        if ($unit->hasPreformation()) {
+//            $properties = $this->preformator->preformate($unit, $properties);
+//        }
+        $form = $this->createForm($unit->getUpdateFormConfig());
+//        $unit->fillUpdateFormBuilder($formBuilder);
         $form->submit($properties);
         $this->validateForm($form);
         $data = $form->getData();
 
         $entityClass = $unit->getEntityClass();
         $item = $this->getEntityById($unit, $repository, $id);
-        $fieldNames = $this->getFieldNamesFromFormBuilder($formBuilder);
+        $fieldNames = $this->getFieldNamesFromForm($form);
         $this->fillEntity($item, $entityClass, $fieldNames, $data);
-        $propertyKeys = array_keys($data);
+        $mutations = $unit->getMutationsOnUpdate();
+        foreach ($mutations as $mutationName => $mutationValue) {
+            $item->$mutationName = $mutationValue;
+        }
+        $propertyKeys = array_merge(array_keys($data), array_keys($mutations));
         $repository->update($item, $propertyKeys);
 
         return [];
@@ -313,6 +342,10 @@ class Crud
         if ($itemsPerPage > 50 || $itemsPerPage < 1) {
             $itemsPerPage = 10;
         }
+//        $specialRepositoryMethodName = "crudReadMany$unit";
+//        $repositoryMethod = is_callable([$repository, $specialRepositoryMethodName])
+//            ? $specialRepositoryMethodName
+//            : 'findBy';
         $items = $repository->findBy($filters, null, $page, $itemsPerPage, $sort);
         $total = $repository->getFoundRows();
         $fields = $unit->getReadManyFields();
@@ -416,13 +449,12 @@ class Crud
     /** @throws SortNotAllowedException */
     private function getSort(ReadMethodInterface $unit, array $data)
     {
-        $sort = [];
         foreach ($data as $key => $value) {
-            if (preg_match('/s_(asc|desc)_(.+)/', $key, $matches)) {
+            if (preg_match('/s_(.+)/', $key, $matches)) {
                 $sort[] = [
-                    'field' => $matches[2],
-                    'value' => $value,
-                    'method' => $matches[1],
+                    'type' => Repository::SORT_TYPE_SIMPLE,
+                    'field' => $matches[1],
+                    'method' => $value,
                 ];
             }
         }
@@ -431,6 +463,7 @@ class Crud
                 throw new SortNotAllowedException($item['field']);
             }
         }
+        $sort = array_merge($unit->getPreSort(), $sort);
 
         return $sort;
     }
@@ -450,12 +483,21 @@ class Crud
         return $isMethodAllowed;
     }
 
-    private function createFormBuilder(): FormBuilderInterface
+    private function createForm(array $formConfig, $data = null): FormInterface
     {
-        return $this->formFactory->createBuilder(FormType::class, null, ['csrf_protection' => false]);
+        $builder = $this->formFactory->createBuilder(FormType::class, $data);
+        foreach ($formConfig['fields'] as $fieldName => $field) {
+            $builder->add($fieldName, $field['class'], $field['options']);
+            if (!empty($field['viewTransformer'])) {
+                $builder->get($fieldName)->addViewTransformer($field['viewTransformer']);
+            }
+        }
+        $form = $builder->getForm();
+
+        return $form;
     }
 
-    private function getFieldNamesFromFormBuilder(FormBuilderInterface $formBuilder): array
+    private function getFieldNamesFromForm(FormInterface $formBuilder): array
     {
         $fieldNames = [];
         /** @var FormInterface[] $fields */

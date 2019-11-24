@@ -1,14 +1,15 @@
 services:
     Ewll\CrudBundle\Controller\CrudController:
         tags: ['controller.service_arguments']
+        calls: [[setContainer, ['@service_container']]]
         arguments:
             - '@Ewll\CrudBundle\Crud'
             - '@ewll.db.repository-provider'
 
-    Ewll\CrudBundle\Unit\Item\:
-        resource: '../src/Crud/Unit/Item'
-        tags: ['crud_unit']
-        arguments: ['@ewll.db.repository-provider', '@Ewll\UserBundle\Authenticator\Authenticator']
+#    App\Crud\Unit\:
+#        resource: './../../../../../../src/Crud/Unit'
+#        tags: ['crud_unit']
+#        arguments: ['@ewll.db.repository-provider', '@Ewll\UserBundle\Authenticator\Authenticator']
 
     Ewll\CrudBundle\Constraint\EntityAccessByUnitValidator:
         tags: ['validator.constraint_validator']
@@ -36,8 +37,8 @@ services:
     Ewll\CrudBundle\Preformation\PreformationAbstract:
         abstract: true
 
-    Ewll\CrudBundle\Preformation\Item\:
-        resource: '../src/Crud/Preformation/Item'
+    App\Crud\Preformation\:
+        resource: './../../../../../../src/Crud/Preformation'
         parent: Ewll\CrudBundle\Preformation\PreformationAbstract
         tags: ['crud_preformation']
         autowire: false
@@ -50,6 +51,18 @@ services:
         tags: ['crud_view_transformer']
         arguments: ['@ewll.db.repository-provider']
 
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\TranslateTransformer:
+        tags: ['crud_view_transformer']
+        arguments: ['@translator']
+
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\MoneyTransformer:
+        tags: ['crud_view_transformer']
+        arguments: []
+
     Ewll\CrudBundle\ReadViewCompiler\Transformer\OneToManyTransformer:
         tags: ['crud_view_transformer']
+        arguments: ['@ewll.db.repository-provider']
+
+    Ewll\CrudBundle\Constraint\EntityAccessValidator:
+        tags: ['validator.constraint_validator']
         arguments: ['@ewll.db.repository-provider']
