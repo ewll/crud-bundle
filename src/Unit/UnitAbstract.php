@@ -14,14 +14,20 @@ abstract class UnitAbstract implements UnitInterface
         $this->authenticator = $authenticator;
     }
 
-    public function getAllowedFilterFields(): array
+    public function getReadOnePreFilters(): array
     {
         return [];
     }
 
-    public function prepareFilters(array $filters): array
+    public function getReadListPreFilters(): array
     {
-        return $filters;
+        return [];
+    }
+
+
+    public function getAllowedFilterFields(): array
+    {
+        return [];
     }
 
     public function getAllowedSortFields(): array
@@ -59,12 +65,17 @@ abstract class UnitAbstract implements UnitInterface
 //        $unit->fillCreateFormBuilder($formBuilder);
 //    }
 
-    public function getMutationsOnUpdate(): array
+    public function getMutationsOnUpdate($entity): array
     {
         return [];
     }
 
-    public function getMutationsOnCreate(): array
+    public function getMutationsOnCreate($entity): array
+    {
+        return [];
+    }
+
+    public function getCustomActions(): array
     {
         return [];
     }

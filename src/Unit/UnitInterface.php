@@ -6,4 +6,5 @@ interface UnitInterface
     public function getEntityClass(): string ;
     public function getAccessRuleClassName(): ?string;
     public function getAccessConditions(): array;
+    public function getCustomActions(): array;
 }

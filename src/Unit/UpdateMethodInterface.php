@@ -4,6 +4,6 @@
 interface UpdateMethodInterface extends UnitInterface
 {
     public function getUpdateFormConfig(): array;
+    public function getMutationsOnUpdate($entity): array;
 //    public function getPreformationClassName(): ?string;
-    public function getMutationsOnUpdate(): array;
 }

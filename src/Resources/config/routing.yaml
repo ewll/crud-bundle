@@ -31,3 +31,17 @@
   methods: [GET]
   requirements: {id: '\d+'}
   defaults: {id: null}
+!php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CUSTOM_ACTION:
+  path: /{unitName}/{customActionName}
+  controller: Ewll\CrudBundle\Controller\CrudController::action
+  methods: [POST]
+!php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CUSTOM_ACTION_TARGET:
+  path: /{unitName}/{id}/{customActionName}
+  controller: Ewll\CrudBundle\Controller\CrudController::action
+  methods: [POST]
+  requirements: {id: '\d+'}
+!php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CUSTOM_ACTION_FORM:
+  path: /{unitName}/{id}/{customActionName}/form
+  controller: Ewll\CrudBundle\Controller\CrudController::action
+  methods: [GET]
+  requirements: {id: '\d+'}

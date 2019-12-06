@@ -11,10 +11,6 @@ services:
 #        tags: ['crud_unit']
 #        arguments: ['@ewll.db.repository-provider', '@Ewll\UserBundle\Authenticator\Authenticator']
 
-    Ewll\CrudBundle\Constraint\EntityAccessByUnitValidator:
-        tags: ['validator.constraint_validator']
-        arguments: ['@ewll.db.repository-provider', !tagged crud_unit]
-
     Ewll\CrudBundle\Crud:
         arguments:
             - '@validator'
@@ -24,8 +20,10 @@ services:
             - '@Ewll\UserBundle\Authenticator\Authenticator'
             - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
             - '@Ewll\CrudBundle\Preformation\Preformator'
-            - '@form.factory'
-            - !tagged crud_unit
+            - '@Ewll\CrudBundle\Form\FormErrorCompiler'
+            - '@Ewll\CrudBundle\Form\FormFactory'
+            - !tagged ewll_crud_unit
+            - !tagged ewll_crud_unit_custom_action
 
     Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler:
         arguments:
@@ -37,12 +35,12 @@ services:
     Ewll\CrudBundle\Preformation\PreformationAbstract:
         abstract: true
 
-    App\Crud\Preformation\:
-        resource: './../../../../../../src/Crud/Preformation'
-        parent: Ewll\CrudBundle\Preformation\PreformationAbstract
-        tags: ['crud_preformation']
-        autowire: false
-        autoconfigure: false
+#    App\Crud\Preformation\:
+#        resource: './../../../../../../src/Crud/Preformation'
+#        parent: Ewll\CrudBundle\Preformation\PreformationAbstract
+#        tags: ['crud_preformation']
+#        autowire: false
+#        autoconfigure: false
 
     Ewll\CrudBundle\Preformation\Preformator:
         arguments: ['@form.factory', !tagged crud_preformation]
@@ -66,3 +64,8 @@ services:
     Ewll\CrudBundle\Constraint\EntityAccessValidator:
         tags: ['validator.constraint_validator']
         arguments: ['@ewll.db.repository-provider']
+
+    Ewll\CrudBundle\Form\FormErrorCompiler: []
+
+    Ewll\CrudBundle\Form\FormFactory:
+        arguments: ['@form.factory']

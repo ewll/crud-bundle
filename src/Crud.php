@@ -1,5 +1,7 @@
 <?php namespace Ewll\CrudBundle;
 
+use Ewll\CrudBundle\Action\ActionInterface;
+use Ewll\CrudBundle\Action\CustomAction;
 use Ewll\CrudBundle\Exception\AccessConditionException;
 use Ewll\CrudBundle\Exception\AccessNotGrantedException;
 use Ewll\CrudBundle\Exception\CsrfException;
@@ -12,9 +14,15 @@ use Ewll\CrudBundle\Exception\UnitMethodNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitNotExistsException;
 use Ewll\CrudBundle\Exception\UserNotAuthorizedException;
 use Ewll\CrudBundle\Exception\ValidationException;
+use Ewll\CrudBundle\Form\FormErrorCompiler;
+use Ewll\CrudBundle\Form\FormFactory;
 use Ewll\CrudBundle\Preformation\Preformator;
 use Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler;
 use Ewll\CrudBundle\Unit\CreateMethodInterface;
+use Ewll\CrudBundle\Unit\CustomActionInterface;
+use Ewll\CrudBundle\Unit\CustomActionMultipleInterface;
+use Ewll\CrudBundle\Unit\CustomActionTargetInterface;
+use Ewll\CrudBundle\Unit\CustomActionWithFormInterface;
 use Ewll\CrudBundle\Unit\DeleteMethodInterface;
 use Ewll\CrudBundle\Unit\ReadMethodInterface;
 use Ewll\CrudBundle\Unit\UnitInterface;
@@ -25,24 +33,28 @@ use Ewll\UserBundle\AccessRule\AccessChecker;
 use Ewll\UserBundle\AccessRule\AccessRuleProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
-use Symfony\Component\Form\Extension\Core\Type\FormType;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormFactoryInterface;
+use LogicException;
+use RuntimeException;
 use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
+use Symfony\Component\Validator\Constraints\Count;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class Crud
 {
-    const METHOD_READ = 'read';
-    const METHOD_CREATE = 'create';
-    const METHOD_UPDATE = 'update';
-    const METHOD_DELETE = 'delete';
-    const METHOD_FORM_CREATE = 'formCreate';
-    const METHOD_FORM_UPDATE = 'formUpdate';
-
-    const CSRF_METHODS = [self::METHOD_CREATE, self::METHOD_UPDATE, self::METHOD_DELETE];
-    const FORM_METHODS = [self::METHOD_CREATE, self::METHOD_UPDATE, self::METHOD_DELETE];
+    const CSRF_METHODS = [
+        ActionInterface::CREATE,
+        ActionInterface::UPDATE,
+        ActionInterface::DELETE,
+        ActionInterface::CUSTOM,
+    ];
+    const FORM_METHODS = [
+        ActionInterface::CREATE,
+        ActionInterface::UPDATE,
+        ActionInterface::DELETE,
+        ActionInterface::CUSTOM,
+    ];
 
     const CONSTRAINT_NAME_ENTITY = 'globalEntity';
 
@@ -53,9 +65,12 @@ class Crud
     private $authenticator;
     private $readViewCompiler;
     private $preformator;
+    private $formErrorCompiler;
     private $formFactory;
     /** @var UnitInterface[] */
     private $crudUnits;
+    /** @var CustomActionInterface[] */
+    private $crudUnitCustomActions;
 
     public function __construct(
         ValidatorInterface $validator,
@@ -65,8 +80,10 @@ class Crud
         Authenticator $authenticator,
         ReadViewCompiler $readViewCompiler,
         Preformator $preformator,
-        FormFactoryInterface $formFactory,
-        iterable $crudUnits
+        FormErrorCompiler $formErrorCompiler,
+        FormFactory $formFactory,
+        iterable $crudUnits,
+        iterable $crudUnitCustomActions
     ) {
         $this->validator = $validator;
         $this->repositoryProvider = $repositoryProvider;
@@ -75,8 +92,10 @@ class Crud
         $this->authenticator = $authenticator;
         $this->readViewCompiler = $readViewCompiler;
         $this->preformator = $preformator;
+        $this->formErrorCompiler = $formErrorCompiler;
         $this->formFactory = $formFactory;
         $this->crudUnits = $crudUnits;
+        $this->crudUnitCustomActions = $crudUnitCustomActions;
     }
 
     /**
@@ -93,10 +112,11 @@ class Crud
      * @throws UserNotAuthorizedException
      * @throws AccessConditionException
      */
-    public function handle(string $unitName, string $method, array $data = null, int $id = null): array
+    public function handle(ActionInterface $action): array
     {
-        $unit = $this->getUnit($unitName);
+        $unit = $this->getUnit($action->getUnitName());
         $accessRuleClassName = $unit->getAccessRuleClassName();
+        $data = $action->getData();
         $user = null;
         if (null !== $accessRuleClassName) {
             $accessRule = $this->accessRuleProvider->findByClassName($accessRuleClassName);
@@ -109,42 +129,98 @@ class Crud
                 throw new AccessNotGrantedException();
             }
         }
-        if (null !== $user && in_array($method, self::CSRF_METHODS, true)) {
+        if (null !== $user && in_array($action->getMethodName(), self::CSRF_METHODS, true)) {
             $token = $data['_token'] ?? null;
             if ($token !== $user->token->data['csrf']) {
                 throw new CsrfException();
             }
         }
-        if (!$this->isMethodAllowed($unit, $method)) {
-            throw new UnitMethodNotAllowedException($method);
-        }
+        $this->checkMethodAllowed($action, $unit);
         $entityClass = $unit->getEntityClass();
         $repository = $this->repositoryProvider->get($entityClass);
-        $function = "{$method}Method";
-        if (in_array($method, self::FORM_METHODS, true)) {
+        $function = "{$action->getMethodName()}Method";
+        if (in_array($action->getMethodName(), self::FORM_METHODS, true)) {
             $data = $data['form'] ?? [];
         }
-        $response = $this->$function($unit, $repository, $data, $id);
+        if ($action instanceof CustomAction) {
+            $response = $this
+                ->$function($unit, $repository, $data, $action->getCustomActionName(), $action->getId());
+        } else {
+            $response = $this->$function($unit, $repository, $data, $action->getId());
+        }
 
         return $response;
+    }
+
+    /**
+     * @throws EntityNotFoundException
+     * @throws ValidationException
+     */
+    private function customMethod(
+        UnitInterface $unit,
+        Repository $repository,
+        array $data,
+        string $customActionName,
+        int $id = null
+    ): array {
+        $customAction = $this->findCustomAction($unit, $customActionName);
+        if (null === $customAction) {
+            throw new LogicException('Custom action must be found here');
+        }
+        if ($customAction instanceof CustomActionTargetInterface) {
+            $entity = $this->getEntityById($unit, $repository, $id);
+            $result = $customAction->action($entity, $data);
+        } elseif ($customAction instanceof CustomActionMultipleInterface) {
+            $result = $customAction->action($data);
+        } else {
+            throw new RuntimeException('Unknown CustomAction type');
+        }
+
+        return $result;
+    }
+
+    /**
+     * @throws EntityNotFoundException
+     * @throws UnitMethodNotAllowedException
+     */
+    private function formCustomMethod(
+        UnitInterface $unit,
+        Repository $repository,
+        array $data = null,
+        string $customActionName,
+        int $id
+    ): array {
+        $customAction = $this->findCustomAction($unit, $customActionName);
+        if (null === $customAction) {
+            throw new LogicException('Custom action must be found here');
+        }
+        if (!$customAction instanceof CustomActionWithFormInterface) {
+            throw new UnitMethodNotAllowedException($customActionName);
+        }
+        $item = $this->getEntityById($unit, $repository, $id);
+        $form = $this->formFactory->create($customAction->getFormConfig($item), $item);
+        $formDefinition = $this->compileFormDefinition($form);
+
+        return $formDefinition;
     }
 
     private function formCreateMethod(
         CreateMethodInterface $unit,
         Repository $repository
     ): array {
-        $form = $this->createForm($unit->getCreateFormConfig());
+        $form = $this->formFactory->create($unit->getCreateFormConfig());
 //        $hasPreformation = $unit->hasPreformation();
 //        if ($hasPreformation) {
 //            $this->preformator->fillPreformBuilder($unit, $formBuilder);
 //        } else {
 //        $unit->fillCreateFormBuilder($formBuilder);
 //        }
-        $view = $form->createView();
-        $formDefinition = ['fields' => []];
-        foreach ($view as $fieldName => $field) {
-            $formDefinition['fields'][$fieldName] = [];
-        }
+        $formDefinition = $this->compileFormDefinition($form);
+//        $view = $form->createView();
+//        $formDefinition = ['fields' => []];
+//        foreach ($view as $fieldName => $field) {
+//            $formDefinition['fields'][$fieldName] = [];
+//        }
 
         return $formDefinition;
     }
@@ -157,7 +233,7 @@ class Crud
         int $id
     ): array {
         $item = $this->getEntityById($unit, $repository, $id);
-        $form = $this->createForm($unit->getUpdateFormConfig(), $item);
+        $form = $this->formFactory->create($unit->getUpdateFormConfig(), $item);
 //        $hasPreformation = $unit->hasPreformation();
 //        if ($hasPreformation) {
 //            $preformData = (array)$item;
@@ -165,19 +241,7 @@ class Crud
 //        } else {
 //            $unit->fillUpdateFormBuilder($formBuilder);
 //        }
-        $view = $form->createView();
-        $formDefinition = ['fields' => [], 'data' => []];
-        foreach ($view as $fieldName => $field) {
-            $formDefinition['data'][$fieldName] = $field->vars['value'];
-            $formDefinition['fields'][$fieldName] = [];
-            if (isset($field->vars['choices'])) {
-                $choices = [];
-                foreach ($field->vars['choices'] as $choice) {
-                    $choices[] = ['text' => $choice->label, 'value' => $choice->value];
-                }
-                $formDefinition['fields'][$fieldName]['choices'] = $choices;
-            }
-        }
+        $formDefinition = $this->compileFormDefinition($form);
 
 //        if ($hasPreformation) {
 //            $parameters = $this->preformator->reverse($unit, $item);
@@ -228,16 +292,16 @@ class Crud
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
-        $form = $this->createForm($unit->getCreateFormConfig());
+        $form = $this->formFactory->create($unit->getCreateFormConfig());
         $form->submit($properties);
         $this->validateForm($form);
         $data = $form->getData();
 
         $entityClass = $unit->getEntityClass();
-        $fieldNames = $this->getFieldNamesFromForm($form);
+        $fieldNames = $this->getFieldNamesFromFormExcludeDisabled($form);
         $entity = new $entityClass();
         $this->fillEntity($entity, $entityClass, $fieldNames, $data);
-        $mutations = $unit->getMutationsOnCreate();
+        $mutations = $unit->getMutationsOnCreate($entity);
         foreach ($mutations as $mutationName => $mutationValue) {
             $entity->$mutationName = $mutationValue;
         }
@@ -271,22 +335,22 @@ class Crud
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
-        $form = $this->createForm($unit->getUpdateFormConfig());
+        $form = $this->formFactory->create($unit->getUpdateFormConfig());
 //        $unit->fillUpdateFormBuilder($formBuilder);
         $form->submit($properties);
         $this->validateForm($form);
         $data = $form->getData();
 
         $entityClass = $unit->getEntityClass();
-        $item = $this->getEntityById($unit, $repository, $id);
-        $fieldNames = $this->getFieldNamesFromForm($form);
-        $this->fillEntity($item, $entityClass, $fieldNames, $data);
-        $mutations = $unit->getMutationsOnUpdate();
+        $entity = $this->getEntityById($unit, $repository, $id);
+        $fieldNames = $this->getFieldNamesFromFormExcludeDisabled($form);
+        $this->fillEntity($entity, $entityClass, $fieldNames, $data);
+        $mutations = $unit->getMutationsOnUpdate($entity);
         foreach ($mutations as $mutationName => $mutationValue) {
-            $item->$mutationName = $mutationValue;
+            $entity->$mutationName = $mutationValue;
         }
         $propertyKeys = array_merge(array_keys($data), array_keys($mutations));
-        $repository->update($item, $propertyKeys);
+        $repository->update($entity, $propertyKeys);
 
         return [];
     }
@@ -315,7 +379,7 @@ class Crud
     private function readOne(ReadMethodInterface $unit, Repository $repository, int $id): array
     {
         $filters = ['id' => $id, 'isDeleted' => 0];
-        $filters = array_merge($filters, $unit->getAccessConditions());
+        $filters = array_merge($filters, $unit->getReadOnePreFilters(), $unit->getAccessConditions());
         $item = $repository->findOneBy($filters);
         if (null === $item) {
             throw new EntityNotFoundException();
@@ -333,7 +397,12 @@ class Crud
     private function readList(ReadMethodInterface $unit, Repository $repository, array $data): array
     {
         $filters = ['isDeleted' => 0];
-        $filters = array_merge($filters, $this->getFilters($unit, $data), $unit->getAccessConditions());
+        $filters = array_merge(
+            $filters,
+            $unit->getReadListPreFilters(),
+            $this->getFilters($unit, $data),
+            $unit->getAccessConditions()
+        );
         $sort = $this->getSort($unit, $data);
         //@TODO validate 'page' and 'itemsPerPage'
         $page = (int)$data['page'];
@@ -348,7 +417,7 @@ class Crud
 //            : 'findBy';
         $items = $repository->findBy($filters, null, $page, $itemsPerPage, $sort);
         $total = $repository->getFoundRows();
-        $fields = $unit->getReadManyFields();
+        $fields = $unit->getReadListFields();
         $views = $this->readViewCompiler->compileList($items, $fields);
 
         $response = [
@@ -418,10 +487,7 @@ class Crud
     private function validateForm(FormInterface $form)
     {
         if (!$form->isValid()) {
-            $errors = [];
-            foreach ($form->getErrors(true) as $error) {
-                $errors[$error->getOrigin()->getName()] = $error->getMessage();
-            }
+            $errors = $this->formErrorCompiler->compile($form);
             throw new ValidationException($errors);
         }
     }
@@ -440,8 +506,6 @@ class Crud
                 throw new FilterNotAllowedException($filterName);
             }
         }
-
-        $filters = $unit->prepareFilters($filters);
 
         return $filters;
     }
@@ -468,42 +532,38 @@ class Crud
         return $sort;
     }
 
-    private function isMethodAllowed(UnitInterface $unit, string $method): bool
+    /** @throws UnitMethodNotAllowedException */
+    private function checkMethodAllowed(ActionInterface $action, UnitInterface $unit): void
     {
-        $methodInterfaceRelation = [
-            Crud::METHOD_READ => ReadMethodInterface::class,
-            Crud::METHOD_CREATE => CreateMethodInterface::class,
-            Crud::METHOD_UPDATE => UpdateMethodInterface::class,
-            Crud::METHOD_DELETE => DeleteMethodInterface::class,
-            Crud::METHOD_FORM_CREATE => CreateMethodInterface::class,
-            Crud::METHOD_FORM_UPDATE => UpdateMethodInterface::class,
-        ];
-        $isMethodAllowed = $unit instanceof $methodInterfaceRelation[$method];
-
-        return $isMethodAllowed;
-    }
-
-    private function createForm(array $formConfig, $data = null): FormInterface
-    {
-        $builder = $this->formFactory->createBuilder(FormType::class, $data);
-        foreach ($formConfig['fields'] as $fieldName => $field) {
-            $builder->add($fieldName, $field['class'], $field['options']);
-            if (!empty($field['viewTransformer'])) {
-                $builder->get($fieldName)->addViewTransformer($field['viewTransformer']);
+        $methodName = $action->getMethodName();
+        if ($action instanceof CustomAction) {
+            if (null === $this->findCustomAction($unit, $action->getCustomActionName())) {
+                throw new UnitMethodNotAllowedException($action->getCustomActionName());
+            }
+        } else {
+            $methodInterfaceRelation = [
+                ActionInterface::READ => ReadMethodInterface::class,
+                ActionInterface::CREATE => CreateMethodInterface::class,
+                ActionInterface::UPDATE => UpdateMethodInterface::class,
+                ActionInterface::DELETE => DeleteMethodInterface::class,
+                ActionInterface::FORM_CREATE => CreateMethodInterface::class,
+                ActionInterface::FORM_UPDATE => UpdateMethodInterface::class,
+            ];
+            if (!$unit instanceof $methodInterfaceRelation[$methodName]) {
+                throw new UnitMethodNotAllowedException($methodName);
             }
         }
-        $form = $builder->getForm();
-
-        return $form;
     }
 
-    private function getFieldNamesFromForm(FormInterface $formBuilder): array
+    private function getFieldNamesFromFormExcludeDisabled(FormInterface $formBuilder): array
     {
         $fieldNames = [];
         /** @var FormInterface[] $fields */
         $fields = $formBuilder->all();
         foreach ($fields as $field) {
-            $fieldNames[] = $field->getName();
+            if (!$field->getConfig()->getDisabled()) {
+                $fieldNames[] = $field->getName();
+            }
         }
 
         return $fieldNames;
@@ -520,5 +580,80 @@ class Crud
         }
 
         return $entity;
+    }
+
+    private function findCustomAction(UnitInterface $unit, string $customActionName): ?CustomActionInterface
+    {
+        foreach ($this->crudUnitCustomActions as $customAction) {
+            $isUnitNameMatch = $customAction->getUnitName() === $unit->getUnitName();
+            $isActionNameMatch = $customAction->getName() === $customActionName;
+            if ($isUnitNameMatch && $isActionNameMatch) {
+                foreach ($unit->getCustomActions() as $allowedCustomAction) {
+                    if ($customAction instanceof $allowedCustomAction) {
+                        return $customAction;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function compileFormDefinition(FormInterface $form): array
+    {
+        $view = $form->createView();
+        $formDefinition = ['fields' => [], 'data' => []];
+        foreach ($view as $fieldName => $field) {
+            list($value, $definition) = $this->compileFormFieldView($field);
+            $formDefinition['fields'][$fieldName] = $definition;
+            $formDefinition['data'][$fieldName] = $value;
+        }
+
+        return $formDefinition;
+    }
+
+    private function compileFormFieldView(FormView $field)
+    {
+        $type = $field->vars['block_prefixes'][1];
+        $definition = ['type' => $type, 'constraints' => []];
+
+        $constraints = $field->vars['errors']->getForm()->getConfig()->getOptions()['constraints'];
+        foreach ($constraints as $constraint) {
+            $constraintClass = get_class($constraint);
+            $constraintName = substr(strrchr($constraintClass, '\\'), 1);
+            $constraintOptions = [];
+            switch($constraintClass) {
+                case Count::class:
+                    $constraintOptions['min'] = $constraint->min;
+                    $constraintOptions['max'] = $constraint->max;
+                    break;
+            }
+            $definition['constraints'][$constraintName] = $constraintOptions;
+        }
+        switch ($type) {
+            case 'collection':
+                $value = [];
+                $definition['children'] = [];
+                foreach ($field as $key => $children) {
+                    foreach ($children as $childName => $child) {
+                        list($childValue, $childDefinition) = $this->compileFormFieldView($child);
+                        $value[$key][$childName] = $childValue;
+                        $definition['children'][$key][$childName] = $childDefinition;
+                    }
+                }
+                break;
+            case 'choice':
+                $value = $field->vars['value'];
+                $choices = [];
+                foreach ($field->vars['choices'] as $choice) {
+                    $choices[] = ['text' => $choice->label, 'value' => $choice->value];
+                }
+                $definition['choices'] = $choices;
+                break;
+            default:
+                $value = $field->vars['value'];
+        }
+
+        return [$value, $definition];
     }
 }

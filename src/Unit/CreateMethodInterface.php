@@ -2,7 +2,7 @@
 
 interface CreateMethodInterface extends UnitInterface
 {
-    public function getMutationsOnCreate(): array;
     public function getCreateFormConfig(): array;
+    public function getMutationsOnCreate($entity): array;
 //    public function getPreformationClassName(): ?string;
 }

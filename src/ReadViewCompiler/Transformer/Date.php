@@ -3,6 +3,7 @@
 class Date extends TransformerInitializerAbstract
 {
     const FORMAT_DATE = 'Y-m-d';
+    const FORMAT_SHORT_TIME = 'm-d H:i';
 
     private $format;
 
