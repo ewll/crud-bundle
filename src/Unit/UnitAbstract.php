@@ -65,12 +65,12 @@ abstract class UnitAbstract implements UnitInterface
 //        $unit->fillCreateFormBuilder($formBuilder);
 //    }
 
-    public function getMutationsOnUpdate($entity): array
+    public function getMutationsOnUpdate(object $entity): array
     {
         return [];
     }
 
-    public function getMutationsOnCreate($entity): array
+    public function getMutationsOnCreate(object $entity): array
     {
         return [];
     }

@@ -2,7 +2,13 @@
 
 class FormConfig
 {
+    private $entityClass;
     private $fields = [];
+
+    public function __construct(string $entityClass = null)
+    {
+        $this->entityClass = $entityClass;
+    }
 
     public function addField(string $name, string $class, array $options = [], $viewTransformer = null): FormConfig
     {
@@ -21,5 +27,10 @@ class FormConfig
     public function getFields(): array
     {
         return $this->fields;
+    }
+
+    public function getEntityClass(): ?string
+    {
+        return $this->entityClass;
     }
 }

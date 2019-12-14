@@ -14,16 +14,18 @@ class FormFactory
         $this->baseFormFactory = $baseFormFactory;
     }
 
-    public function create($formConfig, $data = null): FormInterface
+    public function create(FormConfig $formConfig, $data = null): FormInterface
     {
-        if ($formConfig instanceof FormConfig) {
-            $fields = $formConfig->getFields();
-        } else {
-            $fields = $formConfig['fields'];
+        $builderOptions = [];
+        $entityClass = $formConfig->getEntityClass();
+        if (null !== $entityClass) {
+            $builderOptions['data_class'] = $entityClass;
         }
-        $builder = $this->baseFormFactory->createBuilder(FormType::class, $data);
-        foreach ($fields as $fieldName => $field) {
-            $builder->add($fieldName, $field['class'], $field['options']);
+        $builder = $this->baseFormFactory
+            ->createBuilder(FormType::class, $data, $builderOptions);
+        foreach ($formConfig->getFields() as $fieldName => $field) {
+            $options = $field['options'] ?? [];
+            $builder->add($fieldName, $field['class'], $options);
             if (!empty($field['viewTransformer'])) {
                 $builder->get($fieldName)->addViewTransformer($field['viewTransformer']);
             }

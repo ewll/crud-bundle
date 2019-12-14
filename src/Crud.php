@@ -233,7 +233,7 @@ class Crud
         int $id
     ): array {
         $item = $this->getEntityById($unit, $repository, $id);
-        $form = $this->formFactory->create($unit->getUpdateFormConfig(), $item);
+        $form = $this->formFactory->create($unit->getUpdateFormConfig($item), $item);
 //        $hasPreformation = $unit->hasPreformation();
 //        if ($hasPreformation) {
 //            $preformData = (array)$item;
@@ -292,15 +292,15 @@ class Crud
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
-        $form = $this->formFactory->create($unit->getCreateFormConfig());
+        $entityClass = $unit->getEntityClass();
+        $entity = new $entityClass();
+        $form = $this->formFactory->create($unit->getCreateFormConfig(), $entity);
         $form->submit($properties);
         $this->validateForm($form);
         $data = $form->getData();
 
-        $entityClass = $unit->getEntityClass();
-        $fieldNames = $this->getFieldNamesFromFormExcludeDisabled($form);
-        $entity = new $entityClass();
-        $this->fillEntity($entity, $entityClass, $fieldNames, $data);
+//        $fieldNames = $this->getEnabledMappedFieldNamesFromForm($form);
+//        $this->fillEntity($entity, $entityClass, $fieldNames, $data);
         $mutations = $unit->getMutationsOnCreate($entity);
         foreach ($mutations as $mutationName => $mutationValue) {
             $entity->$mutationName = $mutationValue;
@@ -331,25 +331,26 @@ class Crud
         array $properties,
         int $id
     ): array {
-        $formConfig = $unit->getUpdateFormConfig();
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
-        $form = $this->formFactory->create($unit->getUpdateFormConfig());
+        $entity = $this->getEntityById($unit, $repository, $id);
+        $form = $this->formFactory->create($unit->getUpdateFormConfig($entity), $entity);
 //        $unit->fillUpdateFormBuilder($formBuilder);
         $form->submit($properties);
         $this->validateForm($form);
-        $data = $form->getData();
+//        $data = $form->getData();
 
-        $entityClass = $unit->getEntityClass();
-        $entity = $this->getEntityById($unit, $repository, $id);
-        $fieldNames = $this->getFieldNamesFromFormExcludeDisabled($form);
-        $this->fillEntity($entity, $entityClass, $fieldNames, $data);
+//        $entityClass = $unit->getEntityClass();
+//        $entity = $this->getEntityById($unit, $repository, $id);
+        $fieldNames = $this->getEnabledMappedFieldNamesFromForm($form);
+//        $this->fillEntity($entity, $entityClass, $fieldNames, $data);
         $mutations = $unit->getMutationsOnUpdate($entity);
         foreach ($mutations as $mutationName => $mutationValue) {
             $entity->$mutationName = $mutationValue;
         }
-        $propertyKeys = array_merge(array_keys($data), array_keys($mutations));
+//        $propertyKeys = array_merge(array_keys($data), array_keys($mutations));
+        $propertyKeys = array_merge($fieldNames, array_keys($mutations));
         $repository->update($entity, $propertyKeys);
 
         return [];
@@ -444,18 +445,18 @@ class Crud
      * @throws PropertyNotExistsException
      * @throws PropertyNotAllowedException
      */
-    private function fillEntity($entity, string $entityClass, array $allowedProperties, array $properties)
-    {
-        foreach ($properties as $propertyName => $propertyValue) {
-            if (!property_exists($entityClass, $propertyName)) {
-                throw new PropertyNotExistsException($propertyName);
-            }
-            if (!in_array($propertyName, $allowedProperties, true)) {
-                throw new PropertyNotAllowedException($propertyName);
-            }
-            $entity->$propertyName = $propertyValue;
-        }
-    }
+//    private function fillEntity($entity, string $entityClass, array $allowedProperties, array $properties)
+//    {
+//        foreach ($properties as $propertyName => $propertyValue) {
+//            if (!property_exists($entityClass, $propertyName)) {
+//                throw new PropertyNotExistsException($propertyName);
+//            }
+//            if (!in_array($propertyName, $allowedProperties, true)) {
+//                throw new PropertyNotAllowedException($propertyName);
+//            }
+//            $entity->$propertyName = $propertyValue;
+//        }
+//    }
 
     /**
      * @throws ValidationException
@@ -555,13 +556,16 @@ class Crud
         }
     }
 
-    private function getFieldNamesFromFormExcludeDisabled(FormInterface $formBuilder): array
+    private function getEnabledMappedFieldNamesFromForm(FormInterface $formBuilder): array
     {
         $fieldNames = [];
         /** @var FormInterface[] $fields */
         $fields = $formBuilder->all();
         foreach ($fields as $field) {
-            if (!$field->getConfig()->getDisabled()) {
+            $config = $field->getConfig();
+            $isDisabled = $config->getDisabled();
+            $isMapped = $config->getMapped();
+            if (!$isDisabled && $isMapped) {
                 $fieldNames[] = $field->getName();
             }
         }
