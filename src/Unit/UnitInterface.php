@@ -1,10 +1,13 @@
 <?php namespace Ewll\CrudBundle\Unit;
 
+use Ewll\CrudBundle\AccessCondition\AccessConditionInterface;
+
 interface UnitInterface
 {
     public function getUnitName(): string;
     public function getEntityClass(): string ;
     public function getAccessRuleClassName(): ?string;
-    public function getAccessConditions(): array;
+    /** @return AccessConditionInterface[] */
+    public function getAccessConditions(string $action): array;
     public function getCustomActions(): array;
 }

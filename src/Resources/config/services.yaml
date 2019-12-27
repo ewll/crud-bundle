@@ -15,6 +15,7 @@ services:
         arguments:
             - '@validator'
             - '@ewll.db.repository-provider'
+            - '@ewll.db.client.default'
             - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
             - '@Ewll\UserBundle\AccessRule\AccessChecker'
             - '@Ewll\UserBundle\Authenticator\Authenticator'
@@ -24,6 +25,7 @@ services:
             - '@Ewll\CrudBundle\Form\FormFactory'
             - !tagged ewll_crud_unit
             - !tagged ewll_crud_unit_custom_action
+            - '@translator'
 
     Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler:
         arguments:

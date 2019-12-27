@@ -70,6 +70,10 @@ abstract class UnitAbstract implements UnitInterface
         return [];
     }
 
+    public function onCreate(object $entity): void
+    {
+    }
+
     public function getMutationsOnCreate(object $entity): array
     {
         return [];

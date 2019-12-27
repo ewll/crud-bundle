@@ -16,13 +16,8 @@ class FormFactory
 
     public function create(FormConfig $formConfig, $data = null): FormInterface
     {
-        $builderOptions = [];
-        $entityClass = $formConfig->getEntityClass();
-        if (null !== $entityClass) {
-            $builderOptions['data_class'] = $entityClass;
-        }
         $builder = $this->baseFormFactory
-            ->createBuilder(FormType::class, $data, $builderOptions);
+            ->createBuilder(FormType::class, $data, $formConfig->getOptions());
         foreach ($formConfig->getFields() as $fieldName => $field) {
             $options = $field['options'] ?? [];
             $builder->add($fieldName, $field['class'], $options);

@@ -16,7 +16,3 @@ ewll_crud:
   resource: '@EwllCrudBundle/Resources/config/routing.yaml'
   prefix: '/crud'
 ```
-```
-mkdir ./src/Crud/Unit -p
-mkdir ./src/Crud/Preformation
-```

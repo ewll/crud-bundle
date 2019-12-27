@@ -38,8 +38,8 @@ class EntityTransformer implements ViewTransformerInterface
             }
             $entity = $entitiesIndexedById[$field] ?? null;
         } else {
-            throw new RuntimeException('hz');
-//            $entity = $repository->findById($field);
+//            throw new RuntimeException('hz');
+            $entity = $repository->findById($field);
         }
 
         if (null === $entity) {

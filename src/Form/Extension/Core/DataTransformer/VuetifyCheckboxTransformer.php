@@ -13,11 +13,11 @@ class VuetifyCheckboxTransformer implements DataTransformerInterface
 
     public function transform($value)
     {
-        return $value;
+        return (bool)$value;
     }
 
     public function reverseTransform($value)
     {
-        return $value === 'true';
+        return $value === 'true' || $value === 1 || $value === '1';
     }
 }
