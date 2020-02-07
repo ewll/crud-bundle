@@ -1,3 +1,7 @@
+!php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CONFIG:
+  path: /{unitName}/config
+  controller: Ewll\CrudBundle\Controller\CrudController::action
+  methods: [GET]
 !php/const Ewll\CrudBundle\Controller\CrudController::ROUTE_NAME_CREATE:
   path: /{unitName}
   controller: Ewll\CrudBundle\Controller\CrudController::action

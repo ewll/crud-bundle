@@ -1,5 +1,6 @@
 <?php namespace Ewll\CrudBundle\Unit;
 
+use Ewll\CrudBundle\Form\FormConfig;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 
@@ -24,10 +25,20 @@ abstract class UnitAbstract implements UnitInterface
         return [];
     }
 
+    public function getFiltersFormConfig(): ?FormConfig
+    {
+        return null;
+    }
+
 
     public function getAllowedFilterFields(): array
     {
         return [];
+    }
+
+    public function getCreateFormConfig(): ?FormConfig
+    {
+        return null;
     }
 
     public function getAllowedSortFields(): array

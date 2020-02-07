@@ -25,6 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CrudController extends AbstractController
 {
+    const ROUTE_NAME_CONFIG = 'crud.config';
     const ROUTE_NAME_CREATE = 'crud.create';
     const ROUTE_NAME_UPDATE = 'crud.update';
     const ROUTE_NAME_CUSTOM_ACTION = 'crud.custom-action';
@@ -50,6 +51,9 @@ class CrudController extends AbstractController
         try {
             $data = null;
             switch ($request->attributes->get('_route')) {
+                case self::ROUTE_NAME_CONFIG:
+                    $action = new CrudAction(ActionInterface::CONFIG, $unitName);
+                    break;
                 case self::ROUTE_NAME_CREATE:
                     $action = new CrudAction(ActionInterface::CREATE, $unitName, null, $request->request->all());
                     break;

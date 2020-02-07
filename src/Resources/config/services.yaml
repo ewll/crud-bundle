@@ -26,6 +26,7 @@ services:
             - !tagged ewll_crud_unit
             - !tagged ewll_crud_unit_custom_action
             - '@translator'
+            - '@service_container'
 
     Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler:
         arguments:

@@ -16,7 +16,7 @@
     "symfony/validator": "^5",
     "symfony/framework-bundle": "^5",
     "symfony/translation": "^5",
-    "ewll/db-bundle": "^2.16",
+    "ewll/db-bundle": "^2.20",
     "ewll/user-bundle": "^1.1"
   },
   "autoload": {

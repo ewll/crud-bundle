@@ -2,6 +2,7 @@
 
 interface ActionInterface
 {
+    const CONFIG = 'config';
     const READ = 'read';
     const CREATE = 'create';
     const UPDATE = 'update';

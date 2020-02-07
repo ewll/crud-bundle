@@ -1,5 +1,6 @@
 <?php namespace Ewll\CrudBundle;
 
+use App\Sphinx\SphinxClient;
 use Ewll\CrudBundle\Action\ActionInterface;
 use Ewll\CrudBundle\Action\CustomAction;
 use Ewll\CrudBundle\Exception\AccessConditionException;
@@ -14,6 +15,7 @@ use Ewll\CrudBundle\Exception\UnitMethodNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitNotExistsException;
 use Ewll\CrudBundle\Exception\UserNotAuthorizedException;
 use Ewll\CrudBundle\Exception\ValidationException;
+use Ewll\CrudBundle\Form\Extension\Core\Type\SearchType;
 use Ewll\CrudBundle\Form\FormErrorCompiler;
 use Ewll\CrudBundle\Form\FormFactory;
 use Ewll\CrudBundle\Preformation\Preformator;
@@ -39,6 +41,7 @@ use Ewll\UserBundle\Authenticator\Authenticator;
 use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use Exception;
 use LogicException;
+use Psr\Container\ContainerInterface;
 use RuntimeException;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
@@ -79,6 +82,7 @@ class Crud
     /** @var CustomActionInterface[] */
     private $crudUnitCustomActions;
     private $translator;
+    private $container;
 
     public function __construct(
         ValidatorInterface $validator,
@@ -93,9 +97,9 @@ class Crud
         FormFactory $formFactory,
         iterable $crudUnits,
         iterable $crudUnitCustomActions,
-        TranslatorInterface $translator
-    )
-    {
+        TranslatorInterface $translator,
+        ContainerInterface $container
+    ) {
         $this->validator = $validator;
         $this->repositoryProvider = $repositoryProvider;
         $this->defaultDbClient = $defaultDbClient;
@@ -109,6 +113,7 @@ class Crud
         $this->crudUnits = $crudUnits;
         $this->crudUnitCustomActions = $crudUnitCustomActions;
         $this->translator = $translator;
+        $this->container = $container;
     }
 
     /**
@@ -165,6 +170,24 @@ class Crud
         return $response;
     }
 
+    private function configMethod(UnitInterface $unit)
+    {
+        $config = [];
+
+        if ($unit instanceof ReadMethodInterface) {
+            $config['read'] = [
+                'filters' => [],
+            ];
+            $filtersFormConfig = $unit->getFiltersFormConfig();
+            if (null !== $filtersFormConfig) {
+                $filtersForm = $this->formFactory->create($unit->getFiltersFormConfig());
+                $config['read']['filters'] = $this->compileFormDefinition($filtersForm);
+            }
+        }
+
+        return $config;
+    }
+
     /**
      * @throws EntityNotFoundException
      * @throws ValidationException
@@ -176,8 +199,7 @@ class Crud
         array $data,
         string $customActionName,
         int $id = null
-    ): array
-    {
+    ): array {
         $customAction = $this->findCustomAction($unit, $customActionName);
         if (null === $customAction) {
             throw new LogicException('Custom action must be found here');
@@ -206,8 +228,7 @@ class Crud
         array $data = null,
         string $customActionName,
         int $id
-    ): array
-    {
+    ): array {
         $customAction = $this->findCustomAction($unit, $customActionName);
         if (null === $customAction) {
             throw new LogicException('Custom action must be found here');
@@ -226,8 +247,7 @@ class Crud
     private function formCreateMethod(
         CreateMethodInterface $unit,
         Repository $repository
-    ): array
-    {
+    ): array {
         $form = $this->formFactory->create($unit->getCreateFormConfig());
 //        $hasPreformation = $unit->hasPreformation();
 //        if ($hasPreformation) {
@@ -254,8 +274,7 @@ class Crud
         Repository $repository,
         array $data = null,
         int $id
-    ): array
-    {
+    ): array {
         $accessConditions = $unit->getAccessConditions(ActionInterface::FORM_UPDATE);
         $item = $this->getEntityById($repository, $accessConditions, $id);
         $form = $this->formFactory->create($unit->getUpdateFormConfig($item), $item);
@@ -294,8 +313,7 @@ class Crud
         Repository $repository,
         array $data = null,
         int $id
-    ): array
-    {
+    ): array {
         $accessConditions = $unit->getAccessConditions(ActionInterface::DELETE);
         $item = $this->getEntityById($repository, $accessConditions, $id);
         $constraints = $unit->getDeleteConstraints();
@@ -316,8 +334,7 @@ class Crud
         CreateMethodInterface $unit,
         Repository $repository,
         array $properties
-    ): array
-    {
+    ): array {
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
@@ -363,8 +380,7 @@ class Crud
         Repository $repository,
         array $properties,
         int $id
-    ): array
-    {
+    ): array {
 //        if ($unit->hasPreformation()) {
 //            $properties = $this->preformator->preformate($unit, $properties);
 //        }
@@ -391,6 +407,7 @@ class Crud
         if (count($propertyKeys) > 0) {
             $repository->update($entity, $propertyKeys);
         }
+
         return [];
     }
 
@@ -404,8 +421,7 @@ class Crud
         Repository $repository,
         array $data = null,
         int $id = null
-    ): array
-    {
+    ): array {
         $qb = new QueryBuilder($repository);
         if (null !== $id) {
             $response = $this->readOne($unit, $qb, $repository, $id);
@@ -439,6 +455,7 @@ class Crud
     /**
      * @throws FilterNotAllowedException
      * @throws SortNotAllowedException
+     * @throws ValidationException
      */
     private function readList(ReadMethodInterface $unit, QueryBuilder $qb, Repository $repository, array $data): array
     {
@@ -543,21 +560,51 @@ class Crud
         }
     }
 
-    /** @throws FilterNotAllowedException */
+    /**
+     * @throws FilterNotAllowedException
+     * @throws ValidationException
+     */
     private function getFilters(ReadMethodInterface $unit, array $data)
     {
-        $filters = [];
+        $formData = [];
         foreach ($data as $key => $value) {
             if (preg_match('/f_(.+)/', $key, $matches)) {
-                $filters[$matches[1]] = $value;
-            }
-        }
-        foreach ($filters as $filterName => $filterValue) {
-            if (!in_array($filterName, $unit->getAllowedFilterFields(), true)) {
-                throw new FilterNotAllowedException($filterName);
+                $formData[$matches[1]] = $value;
             }
         }
 
+        $filterFormConfig = $unit->getFiltersFormConfig();
+        if (null === $filterFormConfig) {
+            if (count($formData) > 0) {
+                throw new FilterNotAllowedException(array_key_first($formData));
+            }
+
+            return [];
+        }
+        $form = $this->formFactory->create($filterFormConfig);
+        $form->submit($formData);
+        $this->validateForm($form);
+        $validData = $form->getData();
+
+        $filters = [];
+        foreach ($validData as $validItemKey => $validItemValue) {
+            $itemConfig = $form->get($validItemKey)->getConfig();
+            $itemType = $itemConfig->getType()->getInnerType();
+            if ($itemType instanceof SearchType) {
+                if (!empty($validItemValue)) {
+                    $searchItemEntity = $itemConfig->getOptions()['entity'];
+                    $sphinxClient = $this->container->get('ewll.sphinx.client');
+                    $queryIds = $sphinxClient->find($searchItemEntity, $validItemValue);
+                    if (count($queryIds) > 0) {
+                        $filters[] = new FilterExpression(FilterExpression::ACTION_IN, 'id', $queryIds);
+                    } else {
+                        $filters[] = new FilterExpression(FilterExpression::ACTION_EQUAL, 'id', 0);
+                    }
+                }
+            } else {
+                throw new RuntimeException('TODO'); // @TODO
+            }
+        }
         return $filters;
     }
 
@@ -587,7 +634,9 @@ class Crud
     private function checkMethodAllowed(ActionInterface $action, UnitInterface $unit): void
     {
         $methodName = $action->getMethodName();
-        if ($action instanceof CustomAction) {
+        if ($methodName === ActionInterface::CONFIG) {
+            return;
+        } elseif ($action instanceof CustomAction) {
             if (null === $this->findCustomAction($unit, $action->getCustomActionName())) {
                 throw new UnitMethodNotAllowedException($action->getCustomActionName());
             }
@@ -734,12 +783,19 @@ class Crud
             if ($accessCondition instanceof AccessCondition\ExpressionAccessCondition) {
                 $field = $accessCondition->getField();
                 $value = $accessCondition->getValue();
+                $isValueArray = is_array($value);
                 switch ($accessCondition->getAction()) {
                     case AccessCondition\ExpressionAccessCondition::ACTION_EQUAL:
-                        $filters[] = new FilterExpression(FilterExpression::ACTION_EQUAL, $field, $value);
+                        $filterAction = $isValueArray
+                            ? FilterExpression::ACTION_IN
+                            : FilterExpression::ACTION_EQUAL;
+                        $filters[] = new FilterExpression($filterAction, $field, $value);
                         break;
                     case AccessCondition\ExpressionAccessCondition::ACTION_NOT_EQUAL:
-                        $filters[] = new FilterExpression(FilterExpression::ACTION_NOT_EQUAL, $field, $value);
+                        $filterAction = $isValueArray
+                            ? FilterExpression::ACTION_NOT_IN
+                            : FilterExpression::ACTION_NOT_EQUAL;
+                        $filters[] = new FilterExpression($filterAction, $field, $value);
                         break;
                     default:
                         throw new RuntimeException('Unknown ExpressionAccessCondition action');
@@ -756,7 +812,7 @@ class Crud
                             $value = "{$mainPrefix}.{$condition['value']}";
                             break;
                         case 'value':
-                            $value = $condition['value'];
+                            $value = $condition['value'];//@TODO BINDING VALUE
                             break;
                         default:
                             throw new RuntimeException('Unknown RelationAccessCondition field type');
@@ -764,7 +820,7 @@ class Crud
                     $conditions[] = "{$prefix}.{$field} = {$value}";
                 }
                 $qb
-                    ->addJoin($tableName, $prefix, implode(' AND ', $conditions),'LEFT');
+                    ->addJoin($tableName, $prefix, implode(' AND ', $conditions), 'LEFT');
                 switch ($accessCondition->getAction()) {
                     case AccessCondition\RelationAccessCondition::COND_RELATE:
                         $filterAction = FilterExpression::ACTION_IS_NOT_NULL;
