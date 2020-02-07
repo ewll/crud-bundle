@@ -94,4 +94,8 @@ abstract class UnitAbstract implements UnitInterface
     {
         return [];
     }
+
+    public function onUpdate(object $entity): void
+    {
+    }
 }

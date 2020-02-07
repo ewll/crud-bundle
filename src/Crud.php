@@ -365,6 +365,7 @@ class Crud
 
             throw $e;
         }
+
         return ['id' => $entity->id];
     }
 
@@ -404,8 +405,18 @@ class Crud
 
         $this->checkEntityAccess($accessConditions, $entity);
         $propertyKeys = array_merge($fieldNames, array_keys($mutations));
-        if (count($propertyKeys) > 0) {
-            $repository->update($entity, $propertyKeys);
+
+        $this->defaultDbClient->beginTransaction();
+        try {
+            if (count($propertyKeys) > 0) {
+                $repository->update($entity, $propertyKeys);
+            }
+            $unit->onUpdate($entity);
+            $this->defaultDbClient->commit();
+        } catch (Exception $e) {
+            $this->defaultDbClient->rollback();
+
+            throw $e;
         }
 
         return [];
