@@ -5,6 +5,9 @@ class RelationAccessCondition implements AccessConditionInterface
     const COND_RELATE = 1;
     const COND_NOT_RELATE = 2;
 
+    const ACTION_EQUAL = '=';
+    const ACTION_NOT_EQUAL = '<>';
+
     private $action;
     private $className;
     private $conditions;

@@ -817,7 +817,7 @@ class Crud
                 $prefix = "ac{$acCount}";
                 $mainPrefix = $qb->getPrefix();
                 $conditions = [];
-                foreach ($accessCondition->getConditions() as $field => $condition) {
+                foreach ($accessCondition->getConditions() as $condition) {
                     switch ($condition['type']) {
                         case 'field':
                             $value = "{$mainPrefix}.{$condition['value']}";
@@ -828,7 +828,7 @@ class Crud
                         default:
                             throw new RuntimeException('Unknown RelationAccessCondition field type');
                     }
-                    $conditions[] = "{$prefix}.{$field} = {$value}";
+                    $conditions[] = "{$prefix}.{$condition['field']} {$condition['action']} {$value}";
                 }
                 $qb
                     ->addJoin($tableName, $prefix, implode(' AND ', $conditions), 'LEFT');
