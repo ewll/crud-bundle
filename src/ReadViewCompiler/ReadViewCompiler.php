@@ -18,15 +18,16 @@ class ReadViewCompiler
     public function compile($item, array $fields, Context $context = null)
     {
         $view = [];
-        foreach ($fields as $key => $transformers) {
-            $fieldName = is_string($transformers) ? $transformers : $key;
+        foreach ($fields as $fieldKey => $transformers) {
+            $fieldName = is_string($transformers) ? $transformers : $fieldKey;
             if (!is_array($transformers)) {
                 $transformers = [$transformers];
             }
             $preview = $item;
+            $transformMap = [];
             foreach ($transformers as $transformer) {
                 if (null !== $preview) {
-                    $preview = $this->transform($transformer, $preview, $context);
+                    $preview = $this->transform($transformer, $preview, $transformMap, $context);
                 }
             }
             $view[$fieldName] = $preview;
@@ -58,15 +59,16 @@ class ReadViewCompiler
         throw new RuntimeException("Transformer '$transformerClassName' not found");
     }
 
-    private function transform($transformer, $item, Context $context = null)
+    private function transform($transformer, $item, array &$transformMap, Context $context = null)
     {
         if (is_string($transformer)) {
             $fieldName = $transformer;
             $view = $item->$fieldName;
         } elseif ($transformer instanceof ViewTransformerInitializerInterface) {
             $viewTransformerInitializer = $transformer;
+            $transformMap[] = $viewTransformerInitializer->getFieldName();
             $transformer = $this->getTransformer($viewTransformerInitializer);
-            $view = $transformer->transform($viewTransformerInitializer, $item, $context);
+            $view = $transformer->transform($viewTransformerInitializer, $item, $transformMap, $context);
         } elseif (is_callable($transformer)) {
             $function = $transformer;
             $view = $function($item);

@@ -9,8 +9,12 @@ class MoneyTransformer implements ViewTransformerInterface
     {
     }
 
-    public function transform(ViewTransformerInitializerInterface $initializer, $item, Context $context = null)
-    {
+    public function transform(
+        ViewTransformerInitializerInterface $initializer,
+        $item,
+        array $transformMap,
+        Context $context = null
+    ) {
         if (!$initializer instanceof Money) {
             throw new RuntimeException("Expected '".Money::class."', got '".get_class($initializer)."'");
         }

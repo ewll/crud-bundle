@@ -6,16 +6,20 @@ use RuntimeException;
 
 class DateTransformer implements ViewTransformerInterface
 {
-    public function transform(ViewTransformerInitializerInterface $initializer, $item, Context $context = null)
-    {
+    public function transform(
+        ViewTransformerInitializerInterface $initializer,
+        $item,
+        array $transformMap,
+        Context $context = null
+    ) {
         if (!$initializer instanceof Date) {
-            throw new RuntimeException("Expected '".Date::class."', got '".get_class($initializer)."'");
+            throw new RuntimeException("Expected '" . Date::class . "', got '" . get_class($initializer) . "'");
         }
 
         $fieldName = $initializer->getFieldName();
         $field = $item->$fieldName;
         if (!$field instanceof DateTime) {
-            throw new RuntimeException("Expected '".DateTime::class."', got '".get_class($field)."'");
+            throw new RuntimeException("Expected '" . DateTime::class . "', got '" . get_class($field) . "'");
         }
         $value = $field->format($initializer->getFormat());
 

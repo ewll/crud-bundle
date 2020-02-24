@@ -13,11 +13,13 @@ class EntityAccess extends Constraint
         self::MESSAGE_KEY_NOT_EXISTS => 'entity.not-exists'
     ];
     public $entityClassName;
+    public $conditions;
 
-    public function __construct(string $entityClassName)
+    public function __construct(string $entityClassName, array $conditions = [])
     {
         $this->entityClassName = $entityClassName;
 
         parent::__construct();
+        $this->conditions = $conditions;
     }
 }

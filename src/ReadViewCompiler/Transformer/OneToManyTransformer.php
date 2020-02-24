@@ -13,8 +13,12 @@ class OneToManyTransformer implements ViewTransformerInterface
         $this->repositoryProvider = $repositoryProvider;
     }
 //@TODO перенести в DB-bundle
-    public function transform(ViewTransformerInitializerInterface $initializer, $item, Context $context = null)
-    {
+    public function transform(
+        ViewTransformerInitializerInterface $initializer,
+        $item,
+        array $transformMap,
+        Context $context = null
+    ) {
         if (!$initializer instanceof OneToMany) {
             throw new RuntimeException("Expected '".OneToMany::class."', got '".get_class($initializer)."'");
         }

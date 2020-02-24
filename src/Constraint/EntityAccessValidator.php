@@ -25,7 +25,8 @@ class EntityAccessValidator extends ConstraintValidator
         }
 
         $entityId = (int)$value;
-        $conditions = ['id' => $entityId];
+        $conditions = $constraint->conditions;
+        $conditions['id'] = $entityId;
         if (1 === 0) { //@TODO
             $conditions['isDeleted'] = 0;
         }

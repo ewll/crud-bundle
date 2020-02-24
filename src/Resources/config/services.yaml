@@ -68,6 +68,10 @@ services:
         tags: ['validator.constraint_validator']
         arguments: ['@ewll.db.repository-provider']
 
+    Ewll\CrudBundle\Constraint\EntityCountValidator:
+        tags: ['validator.constraint_validator']
+        arguments: ['@ewll.db.repository-provider']
+
     Ewll\CrudBundle\Form\FormErrorCompiler: []
 
     Ewll\CrudBundle\Form\FormFactory:

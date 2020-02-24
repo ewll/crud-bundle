@@ -5,7 +5,7 @@ class Entity extends TransformerInitializerAbstract
     private $entityClassName;
     private $target;
 
-    public function __construct(string $fieldName, string $entityClassName, string $target = null)
+    public function __construct(string $fieldName, string $entityClassName, $target = null)
     {
         $this->entityClassName = $entityClassName;
         $this->target = $target;
@@ -17,7 +17,7 @@ class Entity extends TransformerInitializerAbstract
         return $this->entityClassName;
     }
 
-    public function getTarget(): ?string
+    public function getTarget()
     {
         return $this->target;
     }

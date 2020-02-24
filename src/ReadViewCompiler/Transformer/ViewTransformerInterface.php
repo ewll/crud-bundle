@@ -4,5 +4,10 @@ use Ewll\CrudBundle\ReadViewCompiler\Context;
 
 interface ViewTransformerInterface
 {
-    public function transform(ViewTransformerInitializerInterface $initializer, $item, Context $context = null);
+    public function transform(
+        ViewTransformerInitializerInterface $initializer,
+        $item,
+        array $transformMap,
+        Context $context = null
+    );
 }

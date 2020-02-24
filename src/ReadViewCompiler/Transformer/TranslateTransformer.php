@@ -13,8 +13,12 @@ class TranslateTransformer implements ViewTransformerInterface
         $this->translator = $translator;
     }
 
-    public function transform(ViewTransformerInitializerInterface $initializer, $item, Context $context = null)
-    {
+    public function transform(
+        ViewTransformerInitializerInterface $initializer,
+        $item,
+        array $transformMap,
+        Context $context = null
+    ) {
         if (!$initializer instanceof Translate) {
             throw new RuntimeException("Expected '".Translate::class."', got '".get_class($initializer)."'");
         }

@@ -1,2 +1,4 @@
 entity:
   not-exists: Сущность не найдена
+  count:
+    max: 'Максимальное количество: %maxAmount%'
