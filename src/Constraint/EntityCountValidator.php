@@ -30,7 +30,7 @@ class EntityCountValidator extends ConstraintValidator
             $violation = isset($constraint->translations[EntityCount::MESSAGE_KEY_MAX])
                 ? $constraint->translations[EntityCount::MESSAGE_KEY_MAX]
                 : $constraint->messages[EntityCount::MESSAGE_KEY_MAX];
-            $parameters = ['%maxAmount%' => $constraint->max];
+            $parameters = ['{{ limit }}' => $constraint->max];
             $this->context->buildViolation($violation, $parameters)->addViolation();
         }
     }
