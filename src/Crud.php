@@ -43,6 +43,7 @@ use Exception;
 use LogicException;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\Validator\Constraints\Count;
@@ -612,6 +613,8 @@ class Crud
                         $filters[] = new FilterExpression(FilterExpression::ACTION_EQUAL, 'id', 0);
                     }
                 }
+            } elseif ($itemType instanceof IntegerType) {
+                $filters[] = new FilterExpression(FilterExpression::ACTION_EQUAL, $validItemKey, $validItemValue);
             } else {
                 throw new RuntimeException('TODO'); // @TODO
             }
