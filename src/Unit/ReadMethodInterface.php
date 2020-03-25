@@ -11,4 +11,5 @@ interface ReadMethodInterface extends UnitInterface
     public function getFiltersFormConfig(): ?FormConfig;
     public function getAllowedSortFields(): array;
     public function getPreSort(): array;
+    public function getReadListExtraData(): array;
 }

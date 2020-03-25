@@ -98,4 +98,9 @@ abstract class UnitAbstract implements UnitInterface
     public function onUpdate(object $entity): void
     {
     }
+
+    public function getReadListExtraData(): array
+    {
+        return [];
+    }
 }

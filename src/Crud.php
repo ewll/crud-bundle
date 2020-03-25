@@ -177,7 +177,7 @@ class Crud
 
         if ($unit instanceof ReadMethodInterface) {
             $config['read'] = [
-                'filters' => [],
+                'filters' => new \stdClass(),
             ];
             $filtersFormConfig = $unit->getFiltersFormConfig();
             if (null !== $filtersFormConfig) {
@@ -503,6 +503,7 @@ class Crud
         $response = [
             'items' => $views,
             'total' => $total,
+            'extra' => $unit->getReadListExtraData(),
         ];
 
         return $response;

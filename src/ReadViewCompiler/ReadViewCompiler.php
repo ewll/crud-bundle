@@ -72,6 +72,9 @@ class ReadViewCompiler
         } elseif (is_callable($transformer)) {
             $function = $transformer;
             $view = $function($item);
+            if ($view instanceof ViewTransformerInitializerInterface) {
+                return $this->transform($view, $item, $transformMap, $context);
+            }
         } else {
             throw new RuntimeException('Unexpected read view type');
         }
