@@ -103,4 +103,9 @@ abstract class UnitAbstract implements UnitInterface
     {
         return [];
     }
+
+    public function getCreateExtraData(object $entity): array
+    {
+        return [];
+    }
 }

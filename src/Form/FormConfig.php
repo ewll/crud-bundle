@@ -12,6 +12,9 @@ class FormConfig
 
     public function addField(string $name, string $class, array $options = [], $viewTransformer = null): FormConfig
     {
+        if (array_key_exists($name, $this->fields)) {
+            throw new \RuntimeException("Field '$name' exists!");
+        }
         $field = [
             'class' => $class,
             'options' => $options,

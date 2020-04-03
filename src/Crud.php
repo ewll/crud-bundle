@@ -367,7 +367,7 @@ class Crud
             throw $e;
         }
 
-        return ['id' => $entity->id];
+        return ['id' => $entity->id, 'extra' => $unit->getCreateExtraData($entity)];
     }
 
     /**
@@ -628,6 +628,9 @@ class Crud
     {
         foreach ($data as $key => $value) {
             if (preg_match('/s_(.+)/', $key, $matches)) {
+                if (!in_array($value, ['asc', 'desc'], true)) {
+                    throw new RuntimeException("Filter value '$value', expect 'asc' or 'desc'");
+                }
                 $sort[] = [
                     'type' => Repository::SORT_TYPE_SIMPLE,
                     'field' => $matches[1],
@@ -737,7 +740,12 @@ class Crud
     private function compileFormFieldView(FormView $field)
     {
         $type = $field->vars['block_prefixes'][1];
-        $definition = ['type' => $type, 'constraints' => [], 'disabled' => $field->vars['disabled']];
+        $definition = [
+            'type' => $type,
+            'constraints' => [],
+            'disabled' => $field->vars['disabled'],
+            'label' => $field->vars['label'],
+        ];
 
         $constraints = $field->vars['errors']->getForm()->getConfig()->getOptions()['constraints'];
         foreach ($constraints as $constraint) {
