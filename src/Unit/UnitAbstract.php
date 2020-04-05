@@ -15,6 +15,16 @@ abstract class UnitAbstract implements UnitInterface
         $this->authenticator = $authenticator;
     }
 
+    public function getReadOneFields(): array
+    {
+        return [];
+    }
+
+    public function getReadListFields(): array
+    {
+        return [];
+    }
+
     public function getReadOnePreFilters(): array
     {
         return [];
