@@ -6,27 +6,20 @@ services:
             - '@Ewll\CrudBundle\Crud'
             - '@ewll.db.repository-provider'
 
-#    App\Crud\Unit\:
-#        resource: './../../../../../../src/Crud/Unit'
-#        tags: ['crud_unit']
-#        arguments: ['@ewll.db.repository-provider', '@Ewll\UserBundle\Authenticator\Authenticator']
-
     Ewll\CrudBundle\Crud:
         arguments:
             - '@validator'
-            - '@ewll.db.repository-provider'
-            - '@ewll.db.client.default'
             - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
             - '@Ewll\UserBundle\AccessRule\AccessChecker'
             - '@Ewll\UserBundle\Authenticator\Authenticator'
             - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
-            - '@Ewll\CrudBundle\Preformation\Preformator'
             - '@Ewll\CrudBundle\Form\FormErrorCompiler'
             - '@Ewll\CrudBundle\Form\FormFactory'
             - !tagged ewll_crud_unit
             - !tagged ewll_crud_unit_custom_action
             - '@translator'
             - '@service_container'
+            - !tagged ewll.crud.source
 
     Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler:
         arguments:
@@ -34,19 +27,6 @@ services:
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\DateTransformer:
         tags: ['crud_view_transformer']
-
-    Ewll\CrudBundle\Preformation\PreformationAbstract:
-        abstract: true
-
-#    App\Crud\Preformation\:
-#        resource: './../../../../../../src/Crud/Preformation'
-#        parent: Ewll\CrudBundle\Preformation\PreformationAbstract
-#        tags: ['crud_preformation']
-#        autowire: false
-#        autoconfigure: false
-
-    Ewll\CrudBundle\Preformation\Preformator:
-        arguments: ['@form.factory', !tagged crud_preformation]
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
         tags: ['crud_view_transformer']
@@ -76,3 +56,9 @@ services:
 
     Ewll\CrudBundle\Form\FormFactory:
         arguments: ['@form.factory']
+
+    Ewll\CrudBundle\Source\DbSource:
+        tags: ['ewll.crud.source']
+        arguments:
+            - '@ewll.db.repository-provider'
+            - '@ewll.db.client.default'

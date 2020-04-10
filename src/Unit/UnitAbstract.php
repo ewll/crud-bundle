@@ -1,6 +1,7 @@
 <?php namespace Ewll\CrudBundle\Unit;
 
 use Ewll\CrudBundle\Form\FormConfig;
+use Ewll\CrudBundle\Source\DbSource;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use Ewll\UserBundle\Authenticator\Authenticator;
 
@@ -15,6 +16,11 @@ abstract class UnitAbstract implements UnitInterface
         $this->authenticator = $authenticator;
     }
 
+    public function getSourceClassName(): string
+    {
+        return DbSource::class;
+    }
+
     public function getReadOneFields(): array
     {
         return [];
@@ -25,12 +31,12 @@ abstract class UnitAbstract implements UnitInterface
         return [];
     }
 
-    public function getReadOnePreFilters(): array
+    public function getReadOnePreConditions(): array
     {
         return [];
     }
 
-    public function getReadListPreFilters(): array
+    public function getReadListPreConditions(): array
     {
         return [];
     }
@@ -71,27 +77,16 @@ abstract class UnitAbstract implements UnitInterface
         return null;
     }
 
-//    public function getPreformationClassName(): ?string
-//    {
-//        return null;
-//    }
-
-//    public function fillUpdateFormBuilder(FormBuilderInterface $formBuilder): void
-//    {
-//        $unit = $this;
-//        if (!$unit instanceof CreateMethodInterface) {
-//            throw new LogicException('Unit' . static::class . ' must implement ' . CreateMethodInterface::class);
-//        }
-//
-//        $unit->fillCreateFormBuilder($formBuilder);
-//    }
-
     public function getMutationsOnUpdate(object $entity): array
     {
         return [];
     }
 
-    public function onCreate(object $entity): void
+    public function beforeCreate(object $entity, array $formData): void
+    {
+    }
+
+    public function onCreate(object $entity, array $formData): void
     {
     }
 
@@ -109,7 +104,7 @@ abstract class UnitAbstract implements UnitInterface
     {
     }
 
-    public function getReadListExtraData(): array
+    public function getReadListExtraData(array $context): array
     {
         return [];
     }

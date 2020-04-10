@@ -1,6 +1,6 @@
-<?php namespace Ewll\CrudBundle\AccessCondition;
+<?php namespace Ewll\CrudBundle\Condition;
 
-class RelationAccessCondition implements AccessConditionInterface
+class RelationCondition implements ConditionInterface
 {
     const COND_RELATE = 1;
     const COND_NOT_RELATE = 2;

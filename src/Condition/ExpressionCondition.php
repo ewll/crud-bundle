@@ -1,9 +1,10 @@
-<?php namespace Ewll\CrudBundle\AccessCondition;
+<?php namespace Ewll\CrudBundle\Condition;
 
-class ExpressionAccessCondition implements AccessConditionInterface
+class ExpressionCondition implements ConditionInterface
 {
     const ACTION_EQUAL = 1;
     const ACTION_NOT_EQUAL = 2;
+    const ACTION_GREATER = 3;
 
     private $action;
     private $field;
