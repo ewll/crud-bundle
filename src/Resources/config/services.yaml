@@ -27,6 +27,8 @@ services:
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\DateTransformer:
         tags: ['crud_view_transformer']
+        arguments:
+            - '@Ewll\UserBundle\Authenticator\Authenticator'
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
         tags: ['crud_view_transformer']

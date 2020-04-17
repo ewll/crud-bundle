@@ -2,10 +2,19 @@
 
 use Ewll\CrudBundle\ReadViewCompiler\Context;
 use DateTime;
+use Ewll\UserBundle\Authenticator\Authenticator;
+use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use RuntimeException;
 
 class DateTransformer implements ViewTransformerInterface
 {
+    private $authenticator;
+
+    public function __construct(Authenticator $authenticator)
+    {
+        $this->authenticator = $authenticator;
+    }
+
     public function transform(
         ViewTransformerInitializerInterface $initializer,
         $item,
@@ -21,6 +30,14 @@ class DateTransformer implements ViewTransformerInterface
         if (!$field instanceof DateTime) {
             throw new RuntimeException("Expected '" . DateTime::class . "', got '" . get_class($field) . "'");
         }
+
+        try {
+            $user = $this->authenticator->getUser();
+            $timeZone = new \DateTimeZone($user->timezone);
+            $field->setTimezone($timeZone);
+        } catch (NotAuthorizedException $e) {
+        }
+
         $value = $field->format($initializer->getFormat());
 
         return $value;
