@@ -277,7 +277,7 @@ class Crud
         $constraints = $unit->getDeleteConstraints();
         $item->isDeleted = 1;
         $this->validateEntity($item, $constraints);
-        $source->update($item, ['fields' => 'isDeleted']);
+        $source->update($item, ['fields' => ['isDeleted']]);
 
         return [];
     }
