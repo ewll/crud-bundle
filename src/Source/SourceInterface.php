@@ -1,5 +1,6 @@
 <?php namespace Ewll\CrudBundle\Source;
 
+use Ewll\CrudBundle\Condition\RelationCondition;
 use Ewll\CrudBundle\Exception\EntityNotFoundException;
 
 interface SourceInterface
@@ -20,4 +21,8 @@ interface SourceInterface
         int $itemsPerPage,
         array $sort
     ): ItemsList;
+
+    public function isEntityResolveRelationCondition(object $entity, RelationCondition $accessCondition): bool;
+
+    public function delete(object $item, bool $force, callable $onDelete): void;
 }

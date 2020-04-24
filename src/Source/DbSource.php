@@ -1,6 +1,7 @@
 <?php namespace Ewll\CrudBundle\Source;
 
 use Ewll\CrudBundle\Condition;
+use Ewll\CrudBundle\Condition\RelationCondition;
 use Ewll\CrudBundle\Exception\EntityNotFoundException;
 use Ewll\DBBundle\DB\Client as DbClient;
 use Ewll\DBBundle\Query\QueryBuilder;
@@ -75,6 +76,21 @@ class DbSource implements SourceInterface
         }
     }
 
+    public function delete(object $item, bool $force, callable $onDelete): void
+    {
+        $repository = $this->repositoryProvider->get(get_class($item));
+        $this->defaultDbClient->beginTransaction();
+        try {
+            $repository->delete($item, $force);
+            $onDelete();
+            $this->defaultDbClient->commit();
+        } catch (\Exception $e) {
+            $this->defaultDbClient->rollback();
+
+            throw new \RuntimeException("Transaction: {$e->getMessage()}", 0, $e);
+        }
+    }
+
     public function findOne(string $entityClassName, array $conditions): ?object
     {
         $repository = $this->repositoryProvider->get($entityClassName);
@@ -101,12 +117,63 @@ class DbSource implements SourceInterface
         $qb
             ->addConditions($filters)
             ->setSort($sort)
-            ->setPage($page, $itemsPerPage);
+            ->setPage($page, $itemsPerPage)
+            ->setFlag(QueryBuilder::FLAG_CALC_ROWS);
         $items = $repository->find($qb);
         $total = $repository->getFoundRows();
         $itemsList = new ItemsList($items, $total);
 
         return $itemsList;
+    }
+
+    public function isEntityResolveRelationCondition(object $entity, RelationCondition $accessCondition): bool
+    {
+        $repository = $this->repositoryProvider->get($accessCondition->getClassName());
+        $qb = new QueryBuilder($repository);
+        $fakeJoinCondition = $accessCondition->getJoinCondition();
+        $fakeJoinConditionValueField = $fakeJoinCondition['value'];
+        $filters = [
+            'isDeleted' => 0,
+            new FilterExpression(
+                FilterExpression::ACTION_EQUAL,
+                $fakeJoinCondition['field'],
+                $entity->$fakeJoinConditionValueField
+            ),
+        ];
+        foreach ($accessCondition->getConditions() as $condition) {
+            if ($condition['type'] !== 'value') {
+                throw new \RuntimeException('Nor realised');
+            }
+            $isValueArray = is_array($condition['value']);
+            switch ($condition['action']) {
+                case RelationCondition::ACTION_EQUAL:
+                    $action = $isValueArray
+                        ? FilterExpression::ACTION_IN
+                        : FilterExpression::ACTION_EQUAL;
+                    break;
+                case RelationCondition::ACTION_NOT_EQUAL:
+                    $action = $isValueArray
+                        ? FilterExpression::ACTION_NOT_IN
+                        : FilterExpression::ACTION_NOT_EQUAL;
+                    break;
+                default:
+                    throw new \RuntimeException("Unknow RelationCondition action '{$condition['action']}'");
+            }
+            $filters[] = new FilterExpression($action, $condition['field'], $condition['value']);
+        }
+        $qb
+            ->addConditions($filters)
+            ->setLimit(1);
+        $entity = $repository->find($qb);
+
+        switch ($accessCondition->getAction()) {
+            case RelationCondition::COND_RELATE:
+                return null !== $entity;
+            case RelationCondition::COND_NOT_RELATE:
+                return null === $entity;
+            default:
+                throw new \RuntimeException('Unknow RelationCondition type');
+        }
     }
 
     /**
@@ -148,7 +215,11 @@ class DbSource implements SourceInterface
                 $prefix = "ac{$acCount}";
                 $mainPrefix = $qb->getPrefix();
                 $conditions = [];
-                foreach ($accessCondition->getConditions() as $condition) {
+                $loopConditions = array_merge(
+                    $accessCondition->getConditions(),
+                    [$accessCondition->getJoinCondition()]
+                );
+                foreach ($loopConditions as $condition) {
                     switch ($condition['type']) {
                         case 'field':
                             $value = "{$mainPrefix}.{$condition['value']}";

@@ -12,10 +12,11 @@ use Ewll\CrudBundle\Exception\PropertyNotExistsException;
 use Ewll\CrudBundle\Exception\SortNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitMethodNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitNotExistsException;
-use Ewll\CrudBundle\Exception\UserNotAuthorizedException;
 use Ewll\CrudBundle\Exception\ValidationException;
 use Ewll\CrudBundle\Action\CrudAction;
 use Ewll\CrudBundle\Action\CustomAction;
+use Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider;
+use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -39,29 +40,48 @@ class CrudController extends AbstractController
 
     private $crud;
     private $repositoryProvider;
+    private $authenticatorUserProvider;
 
-    public function __construct(Crud $crud, RepositoryProvider $repositoryProvider)
-    {
+    public function __construct(
+        Crud $crud,
+        RepositoryProvider $repositoryProvider,
+        AuthenticatorUserProvider $authenticatorUserProvider
+    ) {
         $this->crud = $crud;
         $this->repositoryProvider = $repositoryProvider;
+        $this->authenticatorUserProvider = $authenticatorUserProvider;
     }
 
     public function action(Request $request, string $unitName, int $id = null, string $customActionName = null)
     {
         try {
             $data = null;
+            $userProvider = $this->authenticatorUserProvider;
             switch ($request->attributes->get('_route')) {
                 case self::ROUTE_NAME_CONFIG:
-                    $action = new CrudAction(ActionInterface::CONFIG, $unitName);
+                    $action = new CrudAction($userProvider, ActionInterface::CONFIG, $unitName);
                     break;
                 case self::ROUTE_NAME_CREATE:
-                    $action = new CrudAction(ActionInterface::CREATE, $unitName, null, $request->request->all());
+                    $action = new CrudAction(
+                        $userProvider,
+                        ActionInterface::CREATE,
+                        $unitName,
+                        null,
+                        $request->request->all()
+                    );
                     break;
                 case self::ROUTE_NAME_UPDATE:
-                    $action = new CrudAction(ActionInterface::UPDATE, $unitName, $id, $request->request->all());
+                    $action = new CrudAction(
+                        $userProvider,
+                        ActionInterface::UPDATE,
+                        $unitName,
+                        $id,
+                        $request->request->all()
+                    );
                     break;
                 case self::ROUTE_NAME_CUSTOM_ACTION:
                     $action = new CustomAction(
+                        $userProvider,
                         ActionInterface::CUSTOM,
                         $unitName,
                         $request->request->all(),
@@ -70,6 +90,7 @@ class CrudController extends AbstractController
                     break;
                 case self::ROUTE_NAME_CUSTOM_ACTION_TARGET:
                     $action = new CustomAction(
+                        $userProvider,
                         ActionInterface::CUSTOM,
                         $unitName,
                         $request->request->all(),
@@ -79,6 +100,7 @@ class CrudController extends AbstractController
                     break;
                 case self::ROUTE_NAME_CUSTOM_ACTION_FORM:
                     $action = new CustomAction(
+                        $userProvider,
                         ActionInterface::FORM_CUSTOM,
                         $unitName,
                         $request->query->all(),
@@ -87,19 +109,31 @@ class CrudController extends AbstractController
                     );
                     break;
                 case self::ROUTE_NAME_DELETE:
-                    $action = new CrudAction(ActionInterface::DELETE, $unitName, $id, $request->request->all());
+                    $action = new CrudAction(
+                        $userProvider,
+                        ActionInterface::DELETE,
+                        $unitName,
+                        $id,
+                        $request->request->all()
+                    );
                     break;
                 case self::ROUTE_NAME_READ:
-                    $action = new CrudAction(ActionInterface::READ, $unitName, $id);
+                    $action = new CrudAction($userProvider, ActionInterface::READ, $unitName, $id);
                     break;
                 case self::ROUTE_NAME_READ_LIST:
-                    $action = new CrudAction(ActionInterface::READ, $unitName, null, $request->query->all());
+                    $action = new CrudAction(
+                        $userProvider,
+                        ActionInterface::READ,
+                        $unitName,
+                        null,
+                        $request->query->all()
+                    );
                     break;
                 case self::ROUTE_NAME_FORM_CREATE:
-                    $action = new CrudAction(ActionInterface::FORM_CREATE, $unitName, $id);
+                    $action = new CrudAction($userProvider, ActionInterface::FORM_CREATE, $unitName, $id);
                     break;
                 case self::ROUTE_NAME_FORM_UPDATE:
-                    $action = new CrudAction(ActionInterface::FORM_UPDATE, $unitName, $id);
+                    $action = new CrudAction($userProvider, ActionInterface::FORM_UPDATE, $unitName, $id);
                     break;
                 default:
                     throw new RuntimeException('Unhandled route');
@@ -119,7 +153,7 @@ class CrudController extends AbstractController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_ACCEPTABLE);
         } catch (EntityNotFoundException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
-        } catch (UserNotAuthorizedException|CsrfException $e) {
+        } catch (NoUserException|CsrfException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNAUTHORIZED);
         } catch (AccessNotGrantedException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_METHOD_NOT_ALLOWED);

@@ -5,13 +5,13 @@ services:
         arguments:
             - '@Ewll\CrudBundle\Crud'
             - '@ewll.db.repository-provider'
+            - '@Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider'
 
     Ewll\CrudBundle\Crud:
         arguments:
             - '@validator'
             - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
             - '@Ewll\UserBundle\AccessRule\AccessChecker'
-            - '@Ewll\UserBundle\Authenticator\Authenticator'
             - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
             - '@Ewll\CrudBundle\Form\FormErrorCompiler'
             - '@Ewll\CrudBundle\Form\FormFactory'
@@ -31,6 +31,10 @@ services:
             - '@Ewll\UserBundle\Authenticator\Authenticator'
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
+        tags: ['crud_view_transformer']
+        arguments: ['@ewll.db.repository-provider']
+
+    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityRelationTransformer:
         tags: ['crud_view_transformer']
         arguments: ['@ewll.db.repository-provider']
 
@@ -64,3 +68,8 @@ services:
         arguments:
             - '@ewll.db.repository-provider'
             - '@ewll.db.client.default'
+
+    Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider:
+        tags: ['ewll.crud.user-provider']
+        arguments:
+            - '@Ewll\UserBundle\Authenticator\Authenticator'

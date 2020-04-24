@@ -10,12 +10,14 @@ class RelationCondition implements ConditionInterface
 
     private $action;
     private $className;
+    private $joinCondition;
     private $conditions;
 
-    public function __construct(int $action, string $className, array $conditions)
+    public function __construct(int $action, string $className, array $joinCondition, array $conditions)
     {
         $this->action = $action;
         $this->className = $className;
+        $this->joinCondition = $joinCondition;
         $this->conditions = $conditions;
     }
 
@@ -27,6 +29,11 @@ class RelationCondition implements ConditionInterface
     public function getClassName(): string
     {
         return $this->className;
+    }
+
+    public function getJoinCondition(): array
+    {
+        return $this->joinCondition;
     }
 
     public function getConditions(): array

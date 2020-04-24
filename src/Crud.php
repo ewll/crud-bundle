@@ -12,7 +12,6 @@ use Ewll\CrudBundle\Exception\PropertyNotExistsException;
 use Ewll\CrudBundle\Exception\SortNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitMethodNotAllowedException;
 use Ewll\CrudBundle\Exception\UnitNotExistsException;
-use Ewll\CrudBundle\Exception\UserNotAuthorizedException;
 use Ewll\CrudBundle\Exception\ValidationException;
 use Ewll\CrudBundle\Form\Extension\Core\Type\SearchType;
 use Ewll\CrudBundle\Form\FormErrorCompiler;
@@ -29,11 +28,10 @@ use Ewll\CrudBundle\Unit\DeleteMethodInterface;
 use Ewll\CrudBundle\Unit\ReadMethodInterface;
 use Ewll\CrudBundle\Unit\UnitInterface;
 use Ewll\CrudBundle\Unit\UpdateMethodInterface;
+use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
 use Ewll\DBBundle\Repository\Repository;
 use Ewll\UserBundle\AccessRule\AccessChecker;
 use Ewll\UserBundle\AccessRule\AccessRuleProvider;
-use Ewll\UserBundle\Authenticator\Authenticator;
-use Ewll\UserBundle\Authenticator\Exception\NotAuthorizedException;
 use LogicException;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
@@ -66,7 +64,6 @@ class Crud
     private $validator;
     private $accessRuleProvider;
     private $accessChecker;
-    private $authenticator;
     private $readViewCompiler;
     private $formErrorCompiler;
     private $formFactory;
@@ -83,7 +80,6 @@ class Crud
         ValidatorInterface $validator,
         AccessRuleProvider $accessRuleProvider,
         AccessChecker $accessChecker,
-        Authenticator $authenticator,
         ReadViewCompiler $readViewCompiler,
         FormErrorCompiler $formErrorCompiler,
         FormFactory $formFactory,
@@ -96,7 +92,6 @@ class Crud
         $this->validator = $validator;
         $this->accessRuleProvider = $accessRuleProvider;
         $this->accessChecker = $accessChecker;
-        $this->authenticator = $authenticator;
         $this->readViewCompiler = $readViewCompiler;
         $this->formErrorCompiler = $formErrorCompiler;
         $this->formFactory = $formFactory;
@@ -118,27 +113,26 @@ class Crud
      * @throws ValidationException
      * @throws AccessNotGrantedException
      * @throws CsrfException
-     * @throws UserNotAuthorizedException
+     * @throws NoUserException
      * @throws AccessConditionException
      */
     public function handle(ActionInterface $action): array
     {
+        $userProvider = $action->getUserProvider();
         $unit = $this->getUnit($action->getUnitName());
+        $unit->setUserProvider($userProvider);
         $accessRuleClassName = $unit->getAccessRuleClassName();
         $data = $action->getData();
         $user = null;
         if (null !== $accessRuleClassName) {
             $accessRule = $this->accessRuleProvider->findByClassName($accessRuleClassName);
-            try {
-                $user = $this->authenticator->getUser();
-            } catch (NotAuthorizedException $e) {
-                throw new UserNotAuthorizedException();
-            }
+            $user = $userProvider->getUser();
             if (!$this->accessChecker->isGranted($accessRule, $user)) {
                 throw new AccessNotGrantedException();
             }
         }
-        if (null !== $user && in_array($action->getMethodName(), self::CSRF_METHODS, true)) {
+        $isCsrfMethod = in_array($action->getMethodName(), self::CSRF_METHODS, true);
+        if (null !== $user && $isCsrfMethod && $action->needToCheckCsrfToken()) {
             $token = $data['_token'] ?? null;
             if ($token !== $user->token->data['csrf']) {
                 throw new CsrfException();
@@ -173,6 +167,10 @@ class Crud
                 $filtersForm = $this->formFactory->create($unit->getFiltersFormConfig());
                 $config['read']['filters'] = $this->compileFormDefinition($filtersForm);
             }
+        }
+        if ($unit instanceof CreateMethodInterface) {
+            $form = $this->formFactory->create($unit->getCreateFormConfig());
+            $config['create'] = $this->compileFormDefinition($form);
         }
 
         return $config;
@@ -234,6 +232,7 @@ class Crud
         return $formDefinition;
     }
 
+    /** @deprecated Use configMethod */
     private function formCreateMethod(CreateMethodInterface $unit): array
     {
         $form = $this->formFactory->create($unit->getCreateFormConfig());
@@ -275,9 +274,10 @@ class Crud
         $accessConditions = $unit->getAccessConditions(ActionInterface::DELETE);
         $item = $source->getById($unit->getEntityClass(), $id, $accessConditions);
         $constraints = $unit->getDeleteConstraints();
-        $item->isDeleted = 1;
         $this->validateEntity($item, $constraints);
-        $source->update($item, ['fields' => ['isDeleted']]);
+        $source->delete($item, $unit->isForceDelete(), function () use ($unit, $item) {
+            $unit->onDelete($item);
+        });
 
         return [];
     }
@@ -304,7 +304,7 @@ class Crud
         }
 
         $accessConditions = $unit->getAccessConditions(ActionInterface::CREATE);
-        $this->checkEntityAccess($accessConditions, $entity);
+        $this->checkEntityAccess($source, $accessConditions, $entity);
         $source->create($entity, function () use ($unit, $entity, $properties) {
             $unit->onCreate($entity, $properties);
         });
@@ -335,7 +335,7 @@ class Crud
         foreach ($mutations as $mutationName => $mutationValue) {
             $entity->$mutationName = $mutationValue;
         }
-        $this->checkEntityAccess($accessConditions, $entity);
+        $this->checkEntityAccess($source, $accessConditions, $entity);
         $propertyKeys = array_merge($fieldNames, array_keys($mutations));
 
         $source->update($entity, ['fields' => $propertyKeys], function () use ($unit, $entity) {
@@ -492,11 +492,17 @@ class Crud
         $form = $this->formFactory->create($filterFormConfig);
         $form->submit($formData);
         $this->validateForm($form);
-        $validData = $form->getData();
 
         $conditions = [];
-        foreach ($validData as $validItemKey => $validItemValue) {
-            $itemConfig = $form->get($validItemKey)->getConfig();
+        /** @var FormInterface $field */
+        foreach ($form as $fieldName => $field) {
+            $validItemValue = $field->getData();
+            if (null === $validItemValue) {
+                continue;
+            }
+            $itemConfig = $field->getConfig();
+            $propertyPath = $itemConfig->getPropertyPath();
+            $property = null === $propertyPath ? $fieldName : $propertyPath->getElement(0);
             $itemType = $itemConfig->getType()->getInnerType();
             if ($itemType instanceof SearchType) {
                 if (!empty($validItemValue)) {
@@ -520,13 +526,13 @@ class Crud
             } elseif ($itemType instanceof IntegerType) {
                 $conditions[] = new Condition\ExpressionCondition(
                     Condition\ExpressionCondition::ACTION_EQUAL,
-                    $validItemKey,
+                    $property,
                     $validItemValue
                 );
             } elseif ($itemType instanceof ChoiceType) {
                 $conditions[] = new Condition\ExpressionCondition(
                     Condition\ExpressionCondition::ACTION_EQUAL,
-                    $validItemKey,
+                    $property,
                     $validItemValue
                 );
             } else {
@@ -692,8 +698,9 @@ class Crud
     }
 
     /** @throws AccessConditionException */
-    private function checkEntityAccess(array $accessConditions, object $entity): void
+    private function checkEntityAccess(SourceInterface $source, array $accessConditions, object $entity): void
     {
+        $isAccessGranted = false;
         foreach ($accessConditions as $accessCondition) {
             if ($accessCondition instanceof Condition\ExpressionCondition) {
                 $accessConditionValue = $accessCondition->getValue();
@@ -701,12 +708,12 @@ class Crud
                 $accessConditionField = $accessCondition->getField();
                 switch ($accessCondition->getAction()) {
                     case Condition\ExpressionCondition::ACTION_EQUAL:
-                        $accessGranted = $isAccessConditionValueArray
+                        $isAccessGranted = $isAccessConditionValueArray
                             ? in_array($entity->$accessConditionField, $accessConditionValue, true)
                             : $entity->$accessConditionField === $accessConditionValue;
                         break;
                     case Condition\ExpressionCondition::ACTION_NOT_EQUAL:
-                        $accessGranted = $isAccessConditionValueArray
+                        $isAccessGranted = $isAccessConditionValueArray
                             ? !in_array($entity->$accessConditionField, $accessConditionValue, true)
                             : $entity->$accessConditionField !== $accessConditionValue;
                         break;
@@ -715,10 +722,12 @@ class Crud
                             "Unknown ExpressionCondition action '{$accessCondition->getAction()}'"
                         );
                 }
+            } elseif ($accessCondition instanceof Condition\RelationCondition) {
+                $isAccessGranted = $source->isEntityResolveRelationCondition($entity, $accessCondition);
             } else {
                 throw new RuntimeException('Unknown AccessCondition');
             }
-            if (!$accessGranted) {
+            if (!$isAccessGranted) {
                 throw new AccessConditionException();
             }
         }
