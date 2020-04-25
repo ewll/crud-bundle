@@ -1,6 +1,8 @@
 <?php namespace Ewll\CrudBundle\ReadViewCompiler\Transformer;
 
 use Ewll\CrudBundle\ReadViewCompiler\Context;
+use Ewll\DBBundle\Query\QueryBuilder;
+use Ewll\DBBundle\Repository\FilterExpression;
 use Ewll\DBBundle\Repository\RepositoryProvider;
 use LogicException;
 use RuntimeException;
@@ -30,11 +32,17 @@ class EntityRelationTransformer implements ViewTransformerInterface
 
         $entityClassName = $initializer->getEntityClassName();
         $repository = $this->repositoryProvider->get($entityClassName);
+        $qb = new QueryBuilder($repository);
+
+        if ($initializer->hasBeforeRequest()) {
+            call_user_func($initializer->getBeforeRequest(), $qb);
+        }
         if (null !== $context) {
             $contextParameterKey = $this->compileContextParameterKey($transformMap);
             if (!$context->has($contextParameterKey)) {
                 $itemIdsForFind = $this->getItemIdsForFind($context, $transformMap);
-                $allEntities = $repository->findBy([$fieldName => $itemIdsForFind]);
+                $qb->addCondition(new FilterExpression(FilterExpression::ACTION_IN, $fieldName, $itemIdsForFind));
+                $allEntities = $repository->find($qb);
                 $allEntitiesIndexedByItemId = [];
                 foreach ($allEntities as $entity) {
                     if (!isset($allEntitiesIndexedByItemId[$entity->$fieldName])) {
@@ -48,7 +56,8 @@ class EntityRelationTransformer implements ViewTransformerInterface
             }
             $entities = $allEntitiesIndexedByItemId[$item->id] ?? [];
         } else {
-            $entities = $repository->findBy([$fieldName => $item->id]);
+            $qb->addCondition(new FilterExpression(FilterExpression::ACTION_EQUAL, $fieldName, $item->id));
+            $entities = $repository->find($qb);
         }
 
         $target = $initializer->getTarget();
