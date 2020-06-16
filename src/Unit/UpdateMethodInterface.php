@@ -7,5 +7,6 @@ interface UpdateMethodInterface extends UnitInterface
     public function getUpdateFormConfig(object $entity): FormConfig;
     public function getMutationsOnUpdate(object $entity): array;
     public function onUpdate(object $entity): void;
+    public function getUpdateExtraData(object $entity): array;
 //    public function getPreformationClassName(): ?string;
 }

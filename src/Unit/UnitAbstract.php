@@ -139,6 +139,11 @@ abstract class UnitAbstract implements UnitInterface
     {
     }
 
+    public function getUpdateExtraData(object $entity): array
+    {
+        return [];
+    }
+
     public function getReadListExtraData(array $context): array
     {
         return [];

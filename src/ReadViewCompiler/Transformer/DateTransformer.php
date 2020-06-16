@@ -27,7 +27,9 @@ class DateTransformer implements ViewTransformerInterface
 
         $fieldName = $initializer->getFieldName();
         $field = $item->$fieldName;
-        if (!$field instanceof DateTime) {
+        if (null === $field) {
+            return null;
+        } elseif (!$field instanceof DateTime) {
             throw new RuntimeException("Expected '" . DateTime::class . "', got '" . get_class($field) . "'");
         }
 

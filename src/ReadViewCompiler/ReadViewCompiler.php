@@ -1,5 +1,6 @@
 <?php namespace Ewll\CrudBundle\ReadViewCompiler;
 
+use Ewll\CrudBundle\ReadViewCompiler\Transformer\TransformersGroup;
 use Ewll\CrudBundle\ReadViewCompiler\Transformer\ViewTransformerInitializerInterface;
 use Ewll\CrudBundle\ReadViewCompiler\Transformer\ViewTransformerInterface;
 use RuntimeException;
@@ -49,7 +50,7 @@ class ReadViewCompiler
 
     private function getTransformer(ViewTransformerInitializerInterface $initializer): ViewTransformerInterface
     {
-        $transformerClassName = get_class($initializer).'Transformer';
+        $transformerClassName = get_class($initializer) . 'Transformer';
         foreach ($this->transformers as $transformer) {
             if (get_class($transformer) === $transformerClassName) {
                 return $transformer;
@@ -61,7 +62,9 @@ class ReadViewCompiler
 
     private function transform($transformer, $item, array &$transformMap, Context $context = null)
     {
-        if (is_string($transformer)) {
+        if ($transformer instanceof TransformersGroup) {
+            $view = $this->compile($transformer->getItem(), $transformer->getFields(), $context);
+        } elseif (is_string($transformer)) {
             $fieldName = $transformer;
             $view = $item->$fieldName;
         } elseif ($transformer instanceof ViewTransformerInitializerInterface) {
@@ -73,7 +76,9 @@ class ReadViewCompiler
             $function = $transformer;
             $view = $function($item);
             if ($view instanceof ViewTransformerInitializerInterface) {
-                return $this->transform($view, $item, $transformMap, $context);
+                $view = $this->transform($view, $item, $transformMap, $context);
+            } elseif ($view instanceof TransformersGroup) {
+                $view = $this->compile($view->getItem(), $view->getFields(), $context);
             }
         } else {
             throw new RuntimeException('Unexpected read view type');

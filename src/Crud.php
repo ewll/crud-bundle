@@ -132,6 +132,7 @@ class Crud
             }
         }
         $isCsrfMethod = in_array($action->getMethodName(), self::CSRF_METHODS, true);
+        //@TODO Token by form
         if (null !== $user && $isCsrfMethod && $action->needToCheckCsrfToken()) {
             $token = $data['_token'] ?? null;
             if ($token !== $user->token->data['csrf']) {
@@ -327,6 +328,7 @@ class Crud
     ): array {
         $accessConditions = $unit->getAccessConditions(ActionInterface::UPDATE);
         $entity = $source->getById($unit->getEntityClass(), $id, $accessConditions);
+
         $form = $this->formFactory->create($unit->getUpdateFormConfig($entity), $entity);
         $form->submit($properties);
         $this->validateForm($form);
@@ -342,7 +344,7 @@ class Crud
             $unit->onUpdate($entity);
         });
 
-        return [];
+        return ['extra' => $unit->getUpdateExtraData($entity)];
     }
 
     /**
