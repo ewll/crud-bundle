@@ -37,6 +37,7 @@ use Psr\Container\ContainerInterface;
 use RuntimeException;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\Validator\Constraints\Count;
@@ -503,8 +504,7 @@ class Crud
                 continue;
             }
             $itemConfig = $field->getConfig();
-            $propertyPath = $itemConfig->getPropertyPath();
-            $property = null === $propertyPath ? $fieldName : $propertyPath->getElement(0);
+            $property = $itemConfig->getPropertyPath() ?? $fieldName;
             $itemType = $itemConfig->getType()->getInnerType();
             if ($itemType instanceof SearchType) {
                 if (!empty($validItemValue)) {
@@ -532,6 +532,12 @@ class Crud
                     $validItemValue
                 );
             } elseif ($itemType instanceof ChoiceType) {
+                $conditions[] = new Condition\ExpressionCondition(
+                    Condition\ExpressionCondition::ACTION_EQUAL,
+                    $property,
+                    $validItemValue
+                );
+            } elseif ($itemType instanceof TextType) {
                 $conditions[] = new Condition\ExpressionCondition(
                     Condition\ExpressionCondition::ACTION_EQUAL,
                     $property,
