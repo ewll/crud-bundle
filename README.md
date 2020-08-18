@@ -34,6 +34,8 @@ Must returns array of [Access Conditions](https://github.com/ewll/crud-bundle#ac
 Must returns array of [Custom Actions](https://github.com/ewll/crud-bundle#custom-actions) class names. 
 
 ### Ewll\CrudBundle\Unit\CreateMethodInterface
+Allows to create entities by request: POST /crud/{unitName}  
+  
 #### public function getCreateFormConfig(): FormConfig
 Set [Form Config](https://github.com/ewll/crud-bundle#form-config) for entity creation.
 #### public function getMutationsOnCreate(object $entity): array
@@ -42,6 +44,10 @@ Returns array of fields with new values. This method calls before storing.
 Some actions inside transaction within INSERT.
 #### public function getCreateExtraData(object $entity): array
 Some data you need to see in Response after success creation.
+
+### Ewll\CrudBundle\Unit\UpdateeMethodInterface
+### Ewll\CrudBundle\Unit\ReadMethodInterface
+### Ewll\CrudBundle\Unit\DeleteMethodInterface
 
 ## Access Conditions
 @TODO
