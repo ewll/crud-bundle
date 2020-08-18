@@ -33,11 +33,25 @@ Must returns array of [Access Conditions](https://github.com/ewll/crud-bundle#ac
 #### public function getCustomActions(): array
 Must returns array of [Custom Actions](https://github.com/ewll/crud-bundle#custom-actions) class names. 
 
+### Ewll\CrudBundle\Unit\CreateMethodInterface
+#### public function getCreateFormConfig(): FormConfig
+Set [Form Config](https://github.com/ewll/crud-bundle#form-config) for entity creation.
+#### public function getMutationsOnCreate(object $entity): array
+Returns array of fields with new values. This method calls before storing.
+#### public function onCreate(object $entity, array $formData): void
+Some actions inside transaction within INSERT.
+#### public function getCreateExtraData(object $entity): array
+Some data you need to see in Response after success creation.
+
 ## Access Conditions
 @TODO
 
 ## Custom Actions
 @TODO
+
+## Form Config
+Ewll\CrudBundle\Form\FormConfig  
+This is some wrapper for [Symfony Form Building](https://symfony.com/doc/current/forms.html#building-forms)
 
 ## Read Transformers
 Use read transformers to transform data into views.  
