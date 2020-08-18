@@ -17,6 +17,26 @@ ewll_crud:
   prefix: '/crud'
 ```
 ## Units
+### Ewll\CrudBundle\Unit\UnitInterface
+#### public function setUserProvider(UserProviderInterface $userProvider): void
+This function allows to inject mechanism of getting user inside unit.
+#### public function getUnitName(): string
+The main name for URL. Must be unique of all other utits.
+#### public function getEntityClass(): string
+The main entity class.
+#### public function getSourceClassName(): string
+Class name of class implemented Ewll\CrudBundle\Source\SourceInterface allows access to entity storage.
+#### public function getAccessRuleClassName(): ?string
+Class name of [ewll/user-bundle](https://github.com/ewll/user-bundle) AccessRule class implemented Ewll\UserBundle\AccessRule\AccessRuleInterface.
+#### public function getAccessConditions(string $action): array
+Must returns array of [Access Conditions](https://github.com/ewll/crud-bundle#access-conditions).
+#### public function getCustomActions(): array
+Must returns array of [Custom Actions](https://github.com/ewll/crud-bundle#custom-actions) class names. 
+
+## Access Conditions
+@TODO
+
+## Custom Actions
 @TODO
 
 ## Read Transformers
