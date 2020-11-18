@@ -5,7 +5,7 @@
   "license": "proprietary",
   "authors": [
     {
-      "name": "Maksim Salamakhin",
+      "name": "qwertys318",
       "email": "343604@gmail.com"
     }
   ],
@@ -15,9 +15,7 @@
     "symfony/form": "^5",
     "symfony/validator": "^5",
     "symfony/framework-bundle": "^5",
-    "symfony/translation": "^5",
-    "ewll/db-bundle": "^2.20",
-    "ewll/user-bundle": "^1.1"
+    "symfony/translation": "^5"
   },
   "autoload": {
     "psr-4": {

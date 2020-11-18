@@ -4,14 +4,11 @@ services:
         calls: [[setContainer, ['@service_container']]]
         arguments:
             - '@Ewll\CrudBundle\Crud'
-            - '@ewll.db.repository-provider'
-            - '@Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider'
+            - '@Ewll\CrudBundle\UserProvider\AnonymousUserProvider'
 
     Ewll\CrudBundle\Crud:
         arguments:
             - '@validator'
-            - '@Ewll\UserBundle\AccessRule\AccessRuleProvider'
-            - '@Ewll\UserBundle\AccessRule\AccessChecker'
             - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
             - '@Ewll\CrudBundle\Form\FormErrorCompiler'
             - '@Ewll\CrudBundle\Form\FormFactory'
@@ -27,16 +24,14 @@ services:
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\DateTransformer:
         tags: ['crud_view_transformer']
-        arguments:
-            - '@Ewll\UserBundle\Authenticator\Authenticator'
 
-    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
-        tags: ['crud_view_transformer']
-        arguments: ['@ewll.db.repository-provider']
+#    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityTransformer:
+#        tags: ['crud_view_transformer']
+#        arguments: ['@ewll.db.repository-provider']
 
-    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityRelationTransformer:
-        tags: ['crud_view_transformer']
-        arguments: ['@ewll.db.repository-provider']
+#    Ewll\CrudBundle\ReadViewCompiler\Transformer\EntityRelationTransformer:
+#        tags: ['crud_view_transformer']
+#        arguments: ['@ewll.db.repository-provider']
 
     Ewll\CrudBundle\ReadViewCompiler\Transformer\TranslateTransformer:
         tags: ['crud_view_transformer']
@@ -46,30 +41,28 @@ services:
         tags: ['crud_view_transformer']
         arguments: []
 
-    Ewll\CrudBundle\ReadViewCompiler\Transformer\OneToManyTransformer:
-        tags: ['crud_view_transformer']
-        arguments: ['@ewll.db.repository-provider']
+#    Ewll\CrudBundle\ReadViewCompiler\Transformer\OneToManyTransformer:
+#        tags: ['crud_view_transformer']
+#        arguments: ['@ewll.db.repository-provider']
 
-    Ewll\CrudBundle\Constraint\EntityAccessValidator:
-        tags: ['validator.constraint_validator']
-        arguments: ['@ewll.db.repository-provider']
+#    Ewll\CrudBundle\Constraint\EntityAccessValidator:
+#        tags: ['validator.constraint_validator']
+#        arguments: ['@ewll.db.repository-provider']
 
-    Ewll\CrudBundle\Constraint\EntityCountValidator:
-        tags: ['validator.constraint_validator']
-        arguments: ['@ewll.db.repository-provider']
+#    Ewll\CrudBundle\Constraint\EntityCountValidator:
+#        tags: ['validator.constraint_validator']
+#        arguments: ['@ewll.db.repository-provider']
 
     Ewll\CrudBundle\Form\FormErrorCompiler: []
 
     Ewll\CrudBundle\Form\FormFactory:
         arguments: ['@form.factory']
 
-    Ewll\CrudBundle\Source\DbSource:
-        tags: ['ewll.crud.source']
-        arguments:
-            - '@ewll.db.repository-provider'
-            - '@ewll.db.client.default'
+#    Ewll\CrudBundle\Source\EwllDbSource:
+#        tags: ['ewll.crud.source']
+#        arguments:
+#            - '@ewll.db.repository-provider'
+#            - '@ewll.db.client.default'
 
-    Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider:
+    Ewll\CrudBundle\UserProvider\AnonymousUserProvider:
         tags: ['ewll.crud.user-provider']
-        arguments:
-            - '@Ewll\UserBundle\Authenticator\Authenticator'

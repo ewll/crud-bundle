@@ -15,9 +15,7 @@ use Ewll\CrudBundle\Exception\UnitNotExistsException;
 use Ewll\CrudBundle\Exception\ValidationException;
 use Ewll\CrudBundle\Action\CrudAction;
 use Ewll\CrudBundle\Action\CustomAction;
-use Ewll\CrudBundle\UserProvider\AuthenticatorUserProvider;
 use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
-use Ewll\DBBundle\Repository\RepositoryProvider;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -39,24 +37,19 @@ class CrudController extends AbstractController
     const ROUTE_NAME_FORM_UPDATE = 'crud.form-update';
 
     private $crud;
-    private $repositoryProvider;
-    private $authenticatorUserProvider;
 
     public function __construct(
         Crud $crud,
-        RepositoryProvider $repositoryProvider,
-        AuthenticatorUserProvider $authenticatorUserProvider
+        AnonymousUserProvider $anonymousUserProvider
     ) {
         $this->crud = $crud;
-        $this->repositoryProvider = $repositoryProvider;
-        $this->authenticatorUserProvider = $authenticatorUserProvider;
     }
 
     public function action(Request $request, string $unitName, int $id = null, string $customActionName = null)
     {
         try {
             $data = null;
-            $userProvider = $this->authenticatorUserProvider;
+            $userProvider = $this->anonymousUserProvider;
             switch ($request->attributes->get('_route')) {
                 case self::ROUTE_NAME_CONFIG:
                     $action = new CrudAction($userProvider, ActionInterface::CONFIG, $unitName);
