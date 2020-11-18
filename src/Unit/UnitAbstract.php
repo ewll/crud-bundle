@@ -1,33 +1,22 @@
 <?php namespace Ewll\CrudBundle\Unit;
 
-use App\Entity\User;
 use Ewll\CrudBundle\Form\FormConfig;
-use Ewll\CrudBundle\Source\DbSource;
+use Ewll\CrudBundle\Source\EwllDbSource;
 use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
+use Ewll\CrudBundle\UserProvider\UserInterface;
 use Ewll\CrudBundle\UserProvider\UserProviderInterface;
-use Ewll\DBBundle\Repository\RepositoryProvider;
-use Ewll\UserBundle\Authenticator\Authenticator;
 
 abstract class UnitAbstract implements UnitInterface
 {
     /** @var UserProviderInterface */
     protected $userProvider;
-    protected $repositoryProvider;
-    /** @deprecated Use userProvider */
-    protected $authenticator;
-
-    public function __construct(RepositoryProvider $repositoryProvider, Authenticator $authenticator)
-    {
-        $this->repositoryProvider = $repositoryProvider;
-        $this->authenticator = $authenticator;
-    }
 
     public function setUserProvider(UserProviderInterface $userProvider): void
     {
         $this->userProvider = $userProvider;
     }
 
-    public function getUser(): User
+    public function getUser(): UserInterface
     {
         if (null === $this->userProvider) {
             throw new \RuntimeException('userProvider isn\'t set');
@@ -44,7 +33,7 @@ abstract class UnitAbstract implements UnitInterface
 
     public function getSourceClassName(): string
     {
-        return DbSource::class;
+        return EwllDbSource::class;
     }
 
     public function getReadOneFields(): array

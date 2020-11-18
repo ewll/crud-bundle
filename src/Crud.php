@@ -29,9 +29,6 @@ use Ewll\CrudBundle\Unit\ReadMethodInterface;
 use Ewll\CrudBundle\Unit\UnitInterface;
 use Ewll\CrudBundle\Unit\UpdateMethodInterface;
 use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
-use Ewll\DBBundle\Repository\Repository;
-use Ewll\UserBundle\AccessRule\AccessChecker;
-use Ewll\UserBundle\AccessRule\AccessRuleProvider;
 use LogicException;
 use Psr\Container\ContainerInterface;
 use RuntimeException;
@@ -63,8 +60,6 @@ class Crud
     const CONSTRAINT_NAME_ENTITY = 'globalEntity';
 
     private $validator;
-    private $accessRuleProvider;
-    private $accessChecker;
     private $readViewCompiler;
     private $formErrorCompiler;
     private $formFactory;
@@ -79,8 +74,6 @@ class Crud
 
     public function __construct(
         ValidatorInterface $validator,
-        AccessRuleProvider $accessRuleProvider,
-        AccessChecker $accessChecker,
         ReadViewCompiler $readViewCompiler,
         FormErrorCompiler $formErrorCompiler,
         FormFactory $formFactory,
@@ -91,8 +84,6 @@ class Crud
         iterable $crudSources
     ) {
         $this->validator = $validator;
-        $this->accessRuleProvider = $accessRuleProvider;
-        $this->accessChecker = $accessChecker;
         $this->readViewCompiler = $readViewCompiler;
         $this->formErrorCompiler = $formErrorCompiler;
         $this->formFactory = $formFactory;
@@ -126,11 +117,11 @@ class Crud
         $data = $action->getData();
         $user = null;
         if (null !== $accessRuleClassName) {
-            $accessRule = $this->accessRuleProvider->findByClassName($accessRuleClassName);
+//            $accessRule = $this->accessRuleProvider->findByClassName($accessRuleClassName);
             $user = $userProvider->getUser();
-            if (!$this->accessChecker->isGranted($accessRule, $user)) {
-                throw new AccessNotGrantedException();
-            }
+//            if (!$this->accessChecker->isGranted($accessRule, $user)) {
+//                throw new AccessNotGrantedException();
+//            }
         }
         $isCsrfMethod = in_array($action->getMethodName(), self::CSRF_METHODS, true);
         //@TODO Token by form
@@ -560,7 +551,7 @@ class Crud
                     throw new RuntimeException("Filter value '$value', expect 'asc' or 'desc'");
                 }
                 $sort[] = [
-                    'type' => Repository::SORT_TYPE_SIMPLE,
+//                    'type' => Repository::SORT_TYPE_SIMPLE,@TODO
                     'field' => $matches[1],
                     'method' => $value,
                 ];
