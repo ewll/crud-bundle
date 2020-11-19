@@ -12,8 +12,8 @@ services:
             - '@Ewll\CrudBundle\ReadViewCompiler\ReadViewCompiler'
             - '@Ewll\CrudBundle\Form\FormErrorCompiler'
             - '@Ewll\CrudBundle\Form\FormFactory'
-            - !tagged ewll_crud_unit
-            - !tagged ewll_crud_unit_custom_action
+            - !tagged ewll.crud.unit
+            - !tagged ewll.crud.unit
             - '@translator'
             - '@service_container'
             - !tagged ewll.crud.source
@@ -63,6 +63,11 @@ services:
 #        arguments:
 #            - '@ewll.db.repository-provider'
 #            - '@ewll.db.client.default'
+
+    Ewll\CrudBundle\Source\DoctrineSource:
+        tags: ['ewll.crud.source']
+        arguments:
+            - '@doctrine.orm.entity_manager'
 
     Ewll\CrudBundle\UserProvider\AnonymousUserProvider:
         tags: ['ewll.crud.user-provider']

@@ -392,10 +392,10 @@ class Crud
             $this->getUserConditions($unit, $data));
         $sort = $this->getSort($unit, $data);
         //@TODO validate 'page' and 'itemsPerPage'
-        $page = (int)$data['page'];
+        $page = (int)($data['page'] ?? 1);
         $page = $page > 0 ? $page : 1;
-        $itemsPerPage = (int)$data['itemsPerPage'];
-        if ($itemsPerPage > 50 || $itemsPerPage < 1) {
+        $itemsPerPage = (int)($data['itemsPerPage'] ?? 25);
+        if ($itemsPerPage > 500 || $itemsPerPage < 1) {
             $itemsPerPage = 10;
         }
         $list = $source->findList($unit->getEntityClass(), $conditions, $page, $itemsPerPage, $sort);

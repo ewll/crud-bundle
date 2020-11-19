@@ -15,6 +15,7 @@ use Ewll\CrudBundle\Exception\UnitNotExistsException;
 use Ewll\CrudBundle\Exception\ValidationException;
 use Ewll\CrudBundle\Action\CrudAction;
 use Ewll\CrudBundle\Action\CustomAction;
+use Ewll\CrudBundle\UserProvider\AnonymousUserProvider;
 use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,12 +38,14 @@ class CrudController extends AbstractController
     const ROUTE_NAME_FORM_UPDATE = 'crud.form-update';
 
     private $crud;
+    private $anonymousUserProvider;
 
     public function __construct(
         Crud $crud,
         AnonymousUserProvider $anonymousUserProvider
     ) {
         $this->crud = $crud;
+        $this->anonymousUserProvider = $anonymousUserProvider;
     }
 
     public function action(Request $request, string $unitName, int $id = null, string $customActionName = null)

@@ -1,7 +1,7 @@
 <?php namespace Ewll\CrudBundle\Unit;
 
 use Ewll\CrudBundle\Form\FormConfig;
-use Ewll\CrudBundle\Source\EwllDbSource;
+use Ewll\CrudBundle\Source\DoctrineSource;
 use Ewll\CrudBundle\UserProvider\Exception\NoUserException;
 use Ewll\CrudBundle\UserProvider\UserInterface;
 use Ewll\CrudBundle\UserProvider\UserProviderInterface;
@@ -33,7 +33,7 @@ abstract class UnitAbstract implements UnitInterface
 
     public function getSourceClassName(): string
     {
-        return EwllDbSource::class;
+        return DoctrineSource::class;
     }
 
     public function getReadOneFields(): array
